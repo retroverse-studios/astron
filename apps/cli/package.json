@@ -1,0 +1,28 @@
+{
+  "name": "astron-cli",
+  "version": "0.1.0",
+  "description": "ASTRON command-line astrology charts.",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "bin": {
+    "astron": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx src/index.ts",
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@astron/core": "workspace:*",
+    "commander": "^12.1.0",
+    "luxon": "^3.5.0"
+  },
+  "devDependencies": {
+    "@types/luxon": "^3.4.2",
+    "@types/node": "^22",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.9"
+  }
+}

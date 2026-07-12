@@ -1,0 +1,24 @@
+{
+  "name": "astron",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ASTRON — The Clockwork of the Heavens, Charted. Astrology chart engine and apps (CLI, web, desktop).",
+  "author": "Retroverse Studios",
+  "license": "AGPL-3.0-only",
+  "engines": {
+    "node": ">=18",
+    "pnpm": ">=9"
+  },
+  "packageManager": "pnpm@9.15.4",
+  "scripts": {
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck",
+    "format": "prettier --write \"**/*.{ts,tsx,json,md,css}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,json,md,css}\""
+  },
+  "devDependencies": {
+    "prettier": "^3.8.1",
+    "typescript": "^5.7.0"
+  }
+}
