@@ -35,6 +35,9 @@ describe("city search", () => {
     expect(munich.name).toBe("Munich");
     expect(munich.countryCode).toBe("DE");
     expect(atlas.bestMatch("Munich")!.name).toBe("Munich");
+    expect(atlas.bestMatch("Wien")!.name).toBe("Vienna");
+    expect(atlas.bestMatch("Warszawa")!.name).toBe("Warsaw");
+    expect(atlas.bestMatch("Firenze")!.name).toBe("Florence");
   });
 
   it("matches names with diacritics stripped", () => {
