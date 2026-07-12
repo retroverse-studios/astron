@@ -1,6 +1,7 @@
 import { findAspects, MAJOR_ASPECTS } from "./aspects.js";
 import {
   DEFAULT_BODIES,
+  type BodyPosition,
   type Chart,
   type ChartInput,
   type EphemerisProvider,
@@ -32,9 +33,19 @@ export function computeChart(
 ): Chart {
   const zodiac = input.zodiac ?? { type: "tropical" };
   const bodies = input.bodies ?? DEFAULT_BODIES;
-  const jdUt = provider.julianDayUt(input.utc);
+  const jdUt = provider.julianDayUt(input.utc, input.calendar);
 
-  const positions = bodies.map((b) => provider.bodyPosition(jdUt, b, zodiac));
+  // Degrade gracefully when a body can't be computed (asteroid ephemeris
+  // files have narrower date ranges than the planets' Moshier fallback).
+  const positions: BodyPosition[] = [];
+  const warnings: string[] = [];
+  for (const b of bodies) {
+    try {
+      positions.push(provider.bodyPosition(jdUt, b, zodiac));
+    } catch (err) {
+      warnings.push(`${b} omitted: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
 
   let houses: HouseData | undefined;
   if (input.location) {
@@ -61,5 +72,6 @@ export function computeChart(
       zodiac.type === "sidereal"
         ? provider.ayanamsa(jdUt, zodiac.ayanamsa)
         : undefined,
+    warnings: warnings.length ? warnings : undefined,
   };
 }

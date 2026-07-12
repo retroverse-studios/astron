@@ -6,6 +6,7 @@ import type {
   Ayanamsa,
   Body,
   BodyPosition,
+  CalendarSystem,
   EphemerisProvider,
   GeoLocation,
   HouseData,
@@ -70,7 +71,7 @@ export class SwephProvider implements EphemerisProvider {
     this.hasFiles = !!found;
   }
 
-  julianDayUt(utc: Date): number {
+  julianDayUt(utc: Date, calendar: CalendarSystem = "gregorian"): number {
     return sweph.julday(
       utc.getUTCFullYear(),
       utc.getUTCMonth() + 1,
@@ -78,7 +79,7 @@ export class SwephProvider implements EphemerisProvider {
       utc.getUTCHours() +
         utc.getUTCMinutes() / 60 +
         (utc.getUTCSeconds() + utc.getUTCMilliseconds() / 1000) / 3600,
-      constants.SE_GREG_CAL,
+      calendar === "julian" ? constants.SE_JUL_CAL : constants.SE_GREG_CAL,
     );
   }
 

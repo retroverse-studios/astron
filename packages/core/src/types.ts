@@ -125,9 +125,18 @@ export interface Aspect {
   applying: boolean;
 }
 
+/**
+ * Calendar the civil date is expressed in. Dates before the Gregorian
+ * reform (adopted 1582 in Catholic Europe, 1752 in Britain and colonies,
+ * later elsewhere) are usually recorded in the Julian calendar.
+ */
+export type CalendarSystem = "gregorian" | "julian";
+
 export interface ChartInput {
   /** Moment of the chart in UTC. */
   utc: Date;
+  /** Calendar the utc date's Y/M/D are expressed in. Default gregorian. */
+  calendar?: CalendarSystem;
   /** Omit for a "no houses" chart (unknown birth time / planets-only). */
   location?: GeoLocation;
   zodiac?: ZodiacMode;
@@ -146,13 +155,15 @@ export interface Chart {
   aspects: Aspect[];
   /** Ayanamsa value used, degrees (sidereal charts only). */
   ayanamsaValue?: number;
+  /** Bodies that could not be computed (e.g. Chiron outside its ephemeris range). */
+  warnings?: string[];
 }
 
 /** Divisional (varga) charts supported so far. D1 is the rasi chart itself. */
 export type Varga = "d1" | "d9" | "d10";
 
 export interface EphemerisProvider {
-  julianDayUt(utc: Date): number;
+  julianDayUt(utc: Date, calendar?: CalendarSystem): number;
   bodyPosition(jdUt: number, body: Body, zodiac: ZodiacMode): BodyPosition;
   houses(
     jdUt: number,

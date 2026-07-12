@@ -21,8 +21,11 @@ Phase 1 in progress. Working today:
 - **Essential dignities** (domicile/exaltation/detriment/fall, modern + traditional
   rulers) and the sect-aware **Part of Fortune**
 - **Transits**: any moment's sky against a natal chart, read through natal houses
-- **CLI** with historical timezone handling via the IANA database, and `--json`
-  output for machine consumption
+- **Built-in atlas**: offline GeoNames gazetteer (34k cities) — `--place "Ulm, Germany"`
+  resolves coordinates and time zone; endonyms and exonyms both work
+- **Historical time correctness**: IANA timezone/DST resolution, automatic Local Mean
+  Time for pre-standard-time births, and a Julian calendar toggle for pre-reform dates
+- **CLI** with `--json` output for machine consumption
 
 See [docs/PLAN.md](docs/PLAN.md) for the full roadmap (transits, returns, progressions,
 synastry/composite/Davison, chart wheel rendering, web app, Tauri desktop).
@@ -34,13 +37,13 @@ pnpm workspace monorepo:
 ```
 astron/
 ├── packages/
-│   └── core/       # Calculation engine — sweph provider, houses, aspects, vargas
+│   ├── core/       # Calculation engine — sweph provider, houses, aspects, vargas
+│   └── atlas/      # Offline gazetteer (GeoNames), timezone/LMT resolution
 └── apps/
     └── cli/        # astron command-line app
 ```
 
-Planned: `packages/charts` (SVG wheel renderer), `packages/atlas` (geocoding +
-historical time zones + pre-standardisation LMT), `apps/web` (React + Vite),
+Planned: `packages/charts` (SVG wheel renderer), `apps/web` (React + Vite),
 `apps/desktop` (Tauri).
 
 ## Usage
@@ -48,23 +51,27 @@ historical time zones + pre-standardisation LMT), `apps/web` (React + Vite),
 ```bash
 pnpm install
 
-# Natal chart (tropical, Placidus)
-pnpm --filter astron-cli --silent dev natal \
-  -d 1955-02-24 -t 21:15 -z America/Los_Angeles --lat 37.77 --lon -122.42
+# Natal chart (tropical, Placidus) — place resolves via the built-in atlas
+pnpm --filter astron-cli --silent dev natal -d 1955-02-24 -t 21:15 -p "San Francisco"
 
 # Vedic: sidereal Lahiri, whole-sign houses, navamsa
 pnpm --filter astron-cli --silent dev natal \
-  -d 1990-06-15 -t 10:00 -z Asia/Kolkata --lat 28.61 --lon 77.20 \
-  --sidereal --houses wholeSign --varga d9
+  -d 1990-06-15 -t 10:00 -p "New Delhi" --sidereal --houses wholeSign --varga d9
 
 # Chart of the present moment (transits / horary)
-pnpm --filter astron-cli --silent dev now --lat -31.95 --lon 115.86 -z Australia/Perth
+pnpm --filter astron-cli --silent dev now -p "Perth, Australia"
 
 # Today's sky against a natal chart (add --on/--at for another date)
-pnpm --filter astron-cli --silent dev transits \
-  -d 1955-02-24 -t 21:15 -z America/Los_Angeles --lat 37.77 --lon -122.42
+pnpm --filter astron-cli --silent dev transits -d 1955-02-24 -t 21:15 -p "San Francisco"
 
-# Any command with --json for machine-readable output
+# Pre-standard-time birth: Local Mean Time applied automatically
+pnpm --filter astron-cli --silent dev natal -d 1879-03-14 -t 11:30 -p "Ulm, Germany"
+
+# Julian calendar date
+pnpm --filter astron-cli --silent dev natal -d 1642-12-25 --julian -p "Grantham"
+
+# Explicit coordinates still work (--lat 48.4 --lon 10.0 -z Europe/Berlin);
+# any command takes --json; city lookup: astron atlas <query>
 
 # Tests
 pnpm test
@@ -79,9 +86,14 @@ meaningless). Omit `--lat/--lon` for a planets-only chart.
   precision (arcseconds). Outside that range the engine falls back to the built-in
   Moshier model (still sub-arcminute for planets; Chiron unavailable).
 - Historical time zones (including pre-DST rules) come from the IANA database via
-  Luxon/ICU. Caveat: for births before standard time (~1893 in Germany, varies by
-  country), IANA gives the zone reference city's mean time — a birth elsewhere in
-  the zone needs LMT computed from its own longitude (planned atlas feature).
+  Luxon/ICU. For births before standard time (~1893 in Germany, varies by country)
+  ASTRON automatically switches to Local Mean Time computed from the birthplace's
+  own longitude — the trap where IANA silently applies the zone reference city's
+  mean time (Berlin's, for a birth in Ulm) is detected and avoided. Override with
+  `--time-standard iana|lmt`.
+- City data © [GeoNames](https://www.geonames.org) (CC-BY 4.0): cities with
+  population over 15,000 (or capitals). Smaller birth towns: pass `--lat/--lon`,
+  or use the nearest listed town (a few km barely moves the cusps).
 
 ## License
 

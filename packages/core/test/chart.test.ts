@@ -57,6 +57,47 @@ describe("natal chart (tropical)", () => {
   });
 });
 
+describe("calendar systems", () => {
+  it("Julian 1582-10-05 and Gregorian 1582-10-15 are the same day (the reform gap)", () => {
+    const julian = provider.julianDayUt(
+      new Date(Date.UTC(1582, 9, 5, 12)),
+      "julian",
+    );
+    const gregorian = provider.julianDayUt(
+      new Date(Date.UTC(1582, 9, 15, 12)),
+      "gregorian",
+    );
+    expect(julian).toBeCloseTo(gregorian, 9);
+  });
+
+  it("Newton born 25 Dec 1642 (Julian) = 4 Jan 1643 (Gregorian)", () => {
+    const julian = provider.julianDayUt(new Date(Date.UTC(1642, 11, 25)), "julian");
+    const gregorian = provider.julianDayUt(new Date(Date.UTC(1643, 0, 4)), "gregorian");
+    expect(julian).toBeCloseTo(gregorian, 9);
+  });
+
+  it("computes a 17th-century chart with the extended ephemeris files", () => {
+    const chart = computeChart(
+      { utc: new Date(Date.UTC(1642, 11, 25, 2)), calendar: "julian" },
+      provider,
+    );
+    expect(chart.warnings).toBeUndefined();
+    const sun = chart.positions.find((p) => p.body === "sun")!;
+    expect(sun.sign).toBe("Capricorn"); // late December
+    expect(chart.positions.some((p) => p.body === "chiron")).toBe(true);
+  });
+
+  it("omits bodies outside their ephemeris range with a warning instead of throwing", () => {
+    const chart = computeChart(
+      { utc: new Date(Date.UTC(900, 5, 15, 12)) },
+      provider,
+    );
+    expect(chart.positions.some((p) => p.body === "sun")).toBe(true);
+    expect(chart.positions.some((p) => p.body === "chiron")).toBe(false);
+    expect(chart.warnings?.some((w) => w.includes("chiron"))).toBe(true);
+  });
+});
+
 describe("astronomical sanity", () => {
   it("Sun sits at 0° Aries at the March 2000 equinox (2000-03-20 07:35 UTC)", () => {
     const jd = provider.julianDayUt(new Date(Date.UTC(2000, 2, 20, 7, 35)));

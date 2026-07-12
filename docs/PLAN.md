@@ -29,16 +29,27 @@ the chart-type catalogue is mostly thin wrappers.
       through natal houses; `findCrossAspects` will also serve synastry in Phase 5)
 - [x] JSON output flag (`--json`) so other tools/apps can consume the CLI
 
-## Phase 2 — Atlas & time correctness
+## Phase 2 — Atlas & time correctness ✅
 
-The classic source of wrong charts. Own it as `packages/atlas`:
+The classic source of wrong charts. Owned by `packages/atlas`:
 
-- Bundled GeoNames-derived city database (name → lat/lon/IANA zone), fuzzy search
-- Historical timezone/DST via IANA (already through Luxon/ICU); document limits
-- **LMT mode**: births before standard time get Local Mean Time from the city's own
-  longitude, not the zone city's (validated need: Einstein/Ulm is 14 min off otherwise)
-- Julian/Gregorian calendar toggle for pre-1582/1752 dates
-- Unknown birth time → explicit "no time" chart semantics (done in CLI; formalise in core)
+- [x] Bundled GeoNames-derived city database (34k cities, population > 15k or
+      capitals; name → lat/lon/IANA zone/region/country). Alternates are
+      language-filtered from alternateNamesV2 (English + the country's own
+      languages) so "Munich", "München", "Wien" and "Vienna" all resolve.
+      Regenerate with `pnpm --filter @astron/atlas build:data`.
+- [x] Search: diacritic-insensitive, "City, Region, Country" qualifiers,
+      population-ranked. CLI: `--place "Ulm, Germany"` and `astron atlas <query>`.
+- [x] Historical timezone/DST via IANA (Luxon/ICU)
+- [x] **LMT mode**: pre-standard-time offsets are detected by their seconds
+      component (Berlin +0:53:28) and replaced with Local Mean Time from the
+      place's own longitude; `--time-standard iana|lmt` overrides. Known
+      limitation: seconds-precision *standard* times (Amsterdam +0:19:32,
+      1835–1937) are treated as LMT — within ~2 minutes for that zone anyway.
+- [x] Julian calendar toggle (`--julian`, `ChartInput.calendar`) for
+      pre-reform dates, always resolved as LMT
+- Deferred: towns under 15k population (needs cities500 or a paid gazetteer);
+  formal no-time semantics in core (CLI handles it)
 
 ## Phase 3 — Chart wheel + web app
 

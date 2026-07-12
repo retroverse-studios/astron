@@ -1,5 +1,12 @@
 #!/usr/bin/env node
 import {
+  Atlas,
+  formatCity,
+  formatOffset,
+  lmtOffsetMinutes,
+  localToUtc,
+} from "@astron/atlas";
+import {
   computeChart,
   dignities,
   findCrossAspects,
@@ -14,8 +21,10 @@ import {
   type Aspect,
   type Ayanamsa,
   type Body,
+  type CalendarSystem,
   type Chart,
   type ChartInput,
+  type GeoLocation,
   type HouseSystem,
   type RulershipScheme,
   type Varga,
@@ -59,7 +68,7 @@ const BODY_NAMES: Record<Body, string> = {
 
 interface CommonOpts {
   time?: string;
-  zone: string;
+  zone?: string;
   lat?: string;
   lon?: string;
   place?: string;
@@ -68,41 +77,121 @@ interface CommonOpts {
   varga?: string;
   minorAspects?: boolean;
   json?: boolean;
+  timeStandard?: "auto" | "iana" | "lmt";
+  julian?: boolean;
 }
 
-function resolveUtc(
-  dateStr: string,
-  timeStr: string | undefined,
-  zone: string,
-): { utc: Date; local: DateTime } {
-  const local = DateTime.fromISO(`${dateStr}T${timeStr ?? "12:00"}`, { zone });
-  if (!local.isValid) {
-    console.error(`Invalid date/time/zone: ${local.invalidExplanation}`);
-    process.exit(1);
+let sharedAtlas: Atlas | undefined;
+function getAtlas(): Atlas {
+  return (sharedAtlas ??= new Atlas());
+}
+
+interface ResolvedMoment {
+  utc: Date;
+  calendar: CalendarSystem;
+  location?: GeoLocation;
+  zone: string;
+  /** Wall-clock time as entered, for display. */
+  wall: DateTime;
+  timeNote?: string;
+  noTime: boolean;
+}
+
+function fail(message: string): never {
+  console.error(message);
+  process.exit(1);
+}
+
+/**
+ * Turn CLI date/time/place options into a UTC instant and location.
+ * Place comes from --lat/--lon, or an atlas lookup of --place.
+ * Pre-standard-time dates use the place's own Local Mean Time; --julian
+ * dates are always LMT (time zones postdate the Gregorian reform).
+ */
+function resolveMoment(dateStr: string, opts: CommonOpts): ResolvedMoment {
+  let location: GeoLocation | undefined;
+  let zone = opts.zone;
+  if (opts.lat !== undefined && opts.lon !== undefined) {
+    location = {
+      latitude: parseFloat(opts.lat),
+      longitude: parseFloat(opts.lon),
+      name: opts.place,
+    };
+  } else if (opts.place) {
+    const city = getAtlas().bestMatch(opts.place);
+    if (!city) {
+      const near = getAtlas().search(opts.place.split(",")[0]!, 3);
+      fail(
+        `No atlas match for "${opts.place}".` +
+          (near.length
+            ? ` Closest: ${near.map(formatCity).join(" · ")}`
+            : " Try 'astron atlas <name>' or give --lat/--lon."),
+      );
+    }
+    location = {
+      latitude: city.latitude,
+      longitude: city.longitude,
+      name: formatCity(city),
+    };
+    zone ??= city.timezone;
   }
-  return { utc: local.toUTC().toJSDate(), local };
+  zone ??= "UTC";
+
+  const noTime = !opts.time;
+  const time = opts.time ?? "12:00";
+  const calendar: CalendarSystem = opts.julian ? "julian" : "gregorian";
+  const wall = DateTime.fromISO(`${dateStr}T${time}`, { zone: "UTC" });
+  if (!wall.isValid) fail(`Invalid date/time: ${wall.invalidExplanation}`);
+
+  if (opts.julian) {
+    const offset = location ? lmtOffsetMinutes(location.longitude) : 0;
+    return {
+      utc: wall.minus({ minutes: offset }).toJSDate(),
+      calendar,
+      location,
+      zone,
+      wall,
+      noTime,
+      timeNote: location
+        ? `Julian calendar; Local Mean Time ${formatOffset(offset)} from longitude`
+        : "Julian calendar",
+    };
+  }
+
+  const resolved = localToUtc(
+    dateStr,
+    time,
+    { longitude: location?.longitude ?? 0, zone },
+    { timeStandard: location ? (opts.timeStandard ?? "auto") : "iana" },
+  );
+  return {
+    utc: resolved.utc,
+    calendar,
+    location,
+    zone,
+    wall,
+    noTime,
+    timeNote:
+      resolved.method === "lmt"
+        ? `pre-standard time: Local Mean Time ${formatOffset(resolved.offsetMinutes)} from longitude, not ${zone}`
+        : undefined,
+  };
 }
 
-function buildInput(utc: Date, noTime: boolean, opts: CommonOpts): ChartInput {
-  const hasPlace = opts.lat !== undefined && opts.lon !== undefined;
+function buildInput(moment: ResolvedMoment, opts: CommonOpts): ChartInput {
   if (!opts.json) {
-    if (!hasPlace) {
-      console.log("(no --lat/--lon given: computing a planets-only chart, no houses)\n");
-    } else if (noTime) {
+    if (!moment.location) {
+      console.log("(no place given: computing a planets-only chart, no houses)\n");
+    } else if (moment.noTime) {
       console.log("(no --time given: using noon, houses omitted — treat Moon degree as ±6°)\n");
     }
+    if (moment.timeNote) console.log(`(${moment.timeNote})\n`);
   }
   const sidereal = opts.sidereal;
   return {
-    utc,
-    location:
-      hasPlace && !noTime
-        ? {
-            latitude: parseFloat(opts.lat!),
-            longitude: parseFloat(opts.lon!),
-            name: opts.place,
-          }
-        : undefined,
+    utc: moment.utc,
+    calendar: moment.calendar,
+    location: moment.noTime ? undefined : moment.location,
     zodiac: sidereal
       ? {
           type: "sidereal",
@@ -121,7 +210,7 @@ function schemeFor(chart: Chart): RulershipScheme {
   return chart.zodiac.type === "sidereal" ? "traditional" : "modern";
 }
 
-function chartToJson(chart: Chart, opts: CommonOpts): object {
+function chartToJson(chart: Chart, opts: CommonOpts, moment?: ResolvedMoment): object {
   const scheme = schemeFor(chart);
   return {
     ...chart,
@@ -143,18 +232,22 @@ function chartToJson(chart: Chart, opts: CommonOpts): object {
         : "night"
       : undefined,
     rulershipScheme: scheme,
+    ...(moment?.timeNote ? { timeNote: moment.timeNote } : {}),
   };
 }
 
-function printHeader(chart: Chart, local: DateTime): void {
+function printHeader(chart: Chart, moment: ResolvedMoment): void {
   const zodiacLabel =
     chart.zodiac.type === "tropical"
       ? "Tropical"
       : `Sidereal (${chart.zodiac.ayanamsa}, ayanamsa ${chart.ayanamsaValue?.toFixed(2)}°)`;
   console.log("═".repeat(64));
-  console.log(`  ${local.toFormat("d LLLL yyyy, HH:mm")} ${local.zoneName}  (${chart.utc.toISOString().slice(0, 16)}Z)`);
-  if (chart.location) {
-    const { latitude, longitude, name } = chart.location;
+  const calNote = moment.calendar === "julian" ? " (Julian cal.)" : "";
+  console.log(
+    `  ${moment.wall.toFormat("d LLLL yyyy, HH:mm")} ${moment.zone}${calNote}  (${chart.utc.toISOString().slice(0, 16)}Z)`,
+  );
+  if (moment.location) {
+    const { latitude, longitude, name } = moment.location;
     console.log(`  ${name ?? "location"}: ${latitude.toFixed(2)}°, ${longitude.toFixed(2)}°`);
   }
   console.log(`  Zodiac: ${zodiacLabel}${chart.houses ? `   Houses: ${chart.houses.system}` : ""}`);
@@ -209,8 +302,9 @@ function printVarga(chart: Chart, vargaOpt: string): void {
   }
 }
 
-function printChart(chart: Chart, local: DateTime, opts: CommonOpts): void {
-  printHeader(chart, local);
+function printChart(chart: Chart, moment: ResolvedMoment, opts: CommonOpts): void {
+  for (const w of chart.warnings ?? []) console.log(`(${w})`);
+  printHeader(chart, moment);
   printPositions(chart);
   printAnglesAndLots(chart);
   printAspects(chart.aspects);
@@ -221,14 +315,16 @@ function printChart(chart: Chart, local: DateTime, opts: CommonOpts): void {
 function addCommonOptions(cmd: Command): Command {
   return cmd
     .option("-t, --time <HH:MM>", "local clock time of birth/event")
-    .option("-z, --zone <iana>", "IANA time zone, e.g. Australia/Perth", "UTC")
-    .option("--lat <deg>", "latitude, degrees north-positive")
+    .option("-z, --zone <iana>", "IANA time zone (default: the place's zone)")
+    .option("-p, --place <query>", 'place lookup, e.g. "Perth" or "Perth, UK"')
+    .option("--lat <deg>", "latitude, degrees north-positive (overrides --place coords)")
     .option("--lon <deg>", "longitude, degrees east-positive")
-    .option("--place <name>", "place label for display")
     .option("--houses <system>", "placidus|wholeSign|equal|koch|campanus|regiomontanus|porphyry", "placidus")
     .option("--sidereal [ayanamsa]", "sidereal zodiac: lahiri (default), raman, krishnamurti, faganBradley")
     .option("--varga <dN>", "also show a divisional chart: d1, d9, d10")
     .option("--minor-aspects", "include minor aspects")
+    .option("--time-standard <mode>", "auto|iana|lmt — how to interpret clock time", "auto")
+    .option("--julian", "date is in the Julian calendar (implies Local Mean Time)")
     .option("--json", "machine-readable JSON output");
 }
 
@@ -243,13 +339,12 @@ addCommonOptions(
     .description("cast a natal (or any event) chart")
     .requiredOption("-d, --date <YYYY-MM-DD>", "local date of birth/event"),
 ).action((opts: CommonOpts & { date: string }) => {
-  const noTime = !opts.time;
-  const { utc, local } = resolveUtc(opts.date, opts.time, opts.zone);
-  const chart = computeChart(buildInput(utc, noTime, opts), new SwephProvider());
+  const moment = resolveMoment(opts.date, opts);
+  const chart = computeChart(buildInput(moment, opts), new SwephProvider());
   if (opts.json) {
-    console.log(JSON.stringify(chartToJson(chart, opts), null, 2));
+    console.log(JSON.stringify(chartToJson(chart, opts, moment), null, 2));
   } else {
-    printChart(chart, local, opts);
+    printChart(chart, moment, opts);
   }
 });
 
@@ -258,15 +353,18 @@ addCommonOptions(
     .command("now")
     .description("chart of this exact moment (transits / horary)"),
 ).action((opts: CommonOpts) => {
-  const nowLocal = DateTime.now().setZone(opts.zone);
-  const chart = computeChart(
-    buildInput(nowLocal.toUTC().toJSDate(), false, opts),
-    new SwephProvider(),
-  );
+  const probe = resolveMoment("2000-01-01", { ...opts, time: "12:00" });
+  const nowLocal = DateTime.now().setZone(probe.zone);
+  const moment = resolveMoment(nowLocal.toISODate()!, {
+    ...opts,
+    zone: probe.zone,
+    time: nowLocal.toFormat("HH:mm"),
+  });
+  const chart = computeChart(buildInput(moment, opts), new SwephProvider());
   if (opts.json) {
-    console.log(JSON.stringify(chartToJson(chart, opts), null, 2));
+    console.log(JSON.stringify(chartToJson(chart, opts, moment), null, 2));
   } else {
-    printChart(chart, nowLocal, opts);
+    printChart(chart, moment, opts);
   }
 });
 
@@ -279,17 +377,21 @@ addCommonOptions(
     .option("--at <HH:MM>", "transit time (default: now / noon with --on)"),
 ).action((opts: CommonOpts & { date: string; on?: string; at?: string }) => {
   const provider = new SwephProvider();
-  const noTime = !opts.time;
-  const { utc: natalUtc, local: natalLocal } = resolveUtc(opts.date, opts.time, opts.zone);
-  const natal = computeChart(buildInput(natalUtc, noTime, opts), provider);
+  const natalMoment = resolveMoment(opts.date, opts);
+  const natal = computeChart(buildInput(natalMoment, opts), provider);
 
-  const transitLocal = opts.on
-    ? resolveUtc(opts.on, opts.at, opts.zone).local
-    : opts.at
-      ? resolveUtc(DateTime.now().setZone(opts.zone).toISODate()!, opts.at, opts.zone).local
-      : DateTime.now().setZone(opts.zone);
+  const zone = natalMoment.zone;
+  const transitDate = opts.on ?? DateTime.now().setZone(zone).toISODate()!;
+  const transitTime =
+    opts.at ?? (opts.on ? "12:00" : DateTime.now().setZone(zone).toFormat("HH:mm"));
   const sky = computeChart(
-    { utc: transitLocal.toUTC().toJSDate(), zodiac: natal.zodiac },
+    {
+      utc: localToUtc(transitDate, transitTime, {
+        longitude: natalMoment.location?.longitude ?? 0,
+        zone,
+      }).utc,
+      zodiac: natal.zodiac,
+    },
     provider,
   );
   // Transiting planets are read through the natal houses.
@@ -302,7 +404,7 @@ addCommonOptions(
     console.log(
       JSON.stringify(
         {
-          natal: chartToJson(natal, opts),
+          natal: chartToJson(natal, opts, natalMoment),
           transiting: sky.positions.map((p) => ({ ...p, formatted: formatLongitude(p.longitude) })),
           transitUtc: sky.utc,
           aspects: hits,
@@ -314,8 +416,8 @@ addCommonOptions(
     return;
   }
 
-  printHeader(natal, natalLocal);
-  console.log(`\n  TRANSITS for ${transitLocal.toFormat("d LLLL yyyy, HH:mm")} ${transitLocal.zoneName}`);
+  printHeader(natal, natalMoment);
+  console.log(`\n  TRANSITS for ${transitDate} ${transitTime} ${zone}`);
   for (const p of sky.positions) {
     const name = BODY_NAMES[p.body].padEnd(18);
     const pos = formatLongitude(p.longitude).padEnd(19);
@@ -326,5 +428,28 @@ addCommonOptions(
   printAspects(hits, "TRANSITING → NATAL (orb ≤ 3°)");
   console.log();
 });
+
+program
+  .command("atlas")
+  .description("search the built-in city atlas")
+  .argument("<query...>", 'e.g. astron atlas Perth, Australia')
+  .option("--json", "machine-readable JSON output")
+  .action((queryParts: string[], opts: { json?: boolean }) => {
+    const query = queryParts.join(" ");
+    const results = getAtlas().search(query);
+    if (opts.json) {
+      console.log(JSON.stringify(results, null, 2));
+      return;
+    }
+    if (!results.length) {
+      console.log(`No matches for "${query}".`);
+      return;
+    }
+    for (const city of results) {
+      console.log(
+        `  ${formatCity(city).padEnd(52)}${city.latitude.toFixed(2).padStart(8)}°, ${city.longitude.toFixed(2).padStart(9)}°  ${city.timezone}`,
+      );
+    }
+  });
 
 program.parse();
