@@ -18,10 +18,45 @@ export const MINOR_ASPECTS: AspectDef[] = [
   { name: "quincunx", angle: 150, orb: 3 },
 ];
 
+/** Transits are read tighter than natal aspects. */
+export const TRANSIT_ASPECTS: AspectDef[] = MAJOR_ASPECTS.map((a) => ({
+  ...a,
+  orb: Math.min(a.orb, 3),
+}));
+
 /**
- * Find aspects between every pair of positions. Each pair reports at most
- * one aspect (the tightest match). Applying/separating is judged from the
- * bodies' longitudinal speeds.
+ * Tightest matching aspect between two positions, or undefined.
+ * relativeSpeed is d/dt of (a.longitude − b.longitude): pass the speed
+ * difference for two moving bodies, or just a's speed against a static
+ * natal point.
+ */
+function bestAspectBetween(
+  a: BodyPosition,
+  b: BodyPosition,
+  defs: AspectDef[],
+  relativeSpeed: number,
+): Aspect | undefined {
+  const signedSep = norm180(a.longitude - b.longitude);
+  const distance = Math.abs(signedSep);
+  let best: Aspect | undefined;
+  for (const def of defs) {
+    const orb = Math.abs(distance - def.angle);
+    if (orb > def.orb) continue;
+    if (best && orb >= best.orb) continue;
+
+    // Rate of change of the unsigned separation. Moving toward the exact
+    // angle from either side means the aspect is applying.
+    const dDistance = Math.sign(signedSep || 1) * relativeSpeed;
+    const applying = distance > def.angle ? dDistance < 0 : dDistance > 0;
+
+    best = { a: a.body, b: b.body, name: def.name, angle: def.angle, orb, applying };
+  }
+  return best;
+}
+
+/**
+ * Aspects between every pair of positions within one chart. Each pair
+ * reports at most one aspect (the tightest match).
  */
 export function findAspects(
   positions: BodyPosition[],
@@ -32,31 +67,30 @@ export function findAspects(
     for (let j = i + 1; j < positions.length; j++) {
       const p1 = positions[i]!;
       const p2 = positions[j]!;
-      const signedSep = norm180(p1.longitude - p2.longitude);
-      const distance = Math.abs(signedSep);
+      const found = bestAspectBetween(p1, p2, defs, p1.speed - p2.speed);
+      if (found) aspects.push(found);
+    }
+  }
+  return aspects.sort((x, y) => x.orb - y.orb);
+}
 
-      let best: Aspect | undefined;
-      for (const def of defs) {
-        const orb = Math.abs(distance - def.angle);
-        if (orb > def.orb) continue;
-        if (best && orb >= best.orb) continue;
-
-        // Rate of change of the unsigned separation. Moving toward the exact
-        // angle from either side means the aspect is applying.
-        const dDistance = Math.sign(signedSep || 1) * (p1.speed - p2.speed);
-        const applying =
-          distance > def.angle ? dDistance < 0 : dDistance > 0;
-
-        best = {
-          a: p1.body,
-          b: p2.body,
-          name: def.name,
-          angle: def.angle,
-          orb,
-          applying,
-        };
-      }
-      if (best) aspects.push(best);
+/**
+ * Cross-aspects from moving bodies to static reference points — transits to
+ * a natal chart (and later synastry, where nothing applies or separates but
+ * the geometry is the same). `a` of each aspect is the moving body, `b` the
+ * natal point; applying/separating is judged from the moving body's speed
+ * alone.
+ */
+export function findCrossAspects(
+  moving: BodyPosition[],
+  natal: BodyPosition[],
+  defs: AspectDef[] = TRANSIT_ASPECTS,
+): Aspect[] {
+  const aspects: Aspect[] = [];
+  for (const t of moving) {
+    for (const n of natal) {
+      const found = bestAspectBetween(t, n, defs, t.speed);
+      if (found) aspects.push(found);
     }
   }
   return aspects.sort((x, y) => x.orb - y.orb);

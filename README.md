@@ -18,7 +18,11 @@ Phase 1 in progress. Working today:
 - **Zodiacs**: tropical, and sidereal with Lahiri / Raman / Krishnamurti / Fagan-Bradley ayanamsas
 - **Aspects** (majors + minors) with per-aspect orbs and applying/separating detection
 - **Varga (divisional) charts**: D9 navamsa, D10 dashamsa
-- **CLI** with historical timezone handling via the IANA database
+- **Essential dignities** (domicile/exaltation/detriment/fall, modern + traditional
+  rulers) and the sect-aware **Part of Fortune**
+- **Transits**: any moment's sky against a natal chart, read through natal houses
+- **CLI** with historical timezone handling via the IANA database, and `--json`
+  output for machine consumption
 
 See [docs/PLAN.md](docs/PLAN.md) for the full roadmap (transits, returns, progressions,
 synastry/composite/Davison, chart wheel rendering, web app, Tauri desktop).
@@ -55,6 +59,12 @@ pnpm --filter astron-cli --silent dev natal \
 
 # Chart of the present moment (transits / horary)
 pnpm --filter astron-cli --silent dev now --lat -31.95 --lon 115.86 -z Australia/Perth
+
+# Today's sky against a natal chart (add --on/--at for another date)
+pnpm --filter astron-cli --silent dev transits \
+  -d 1955-02-24 -t 21:15 -z America/Los_Angeles --lat 37.77 --lon -122.42
+
+# Any command with --json for machine-readable output
 
 # Tests
 pnpm test

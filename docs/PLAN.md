@@ -23,9 +23,11 @@ the chart-type catalogue is mostly thin wrappers.
 - [x] Aspects (majors/minors, orbs, applying/separating)
 - [x] CLI: `astron natal`, `astron now`; IANA timezone conversion via Luxon
 - [x] Tests against documented reference charts (Einstein), equinox, retrograde windows
-- [ ] Dignities table (rulership/exaltation/detriment/fall) + Part of Fortune
-- [ ] `astron transits` (moment vs natal cross-aspects)
-- [ ] JSON output flag (`--json`) so other tools/apps can consume the CLI
+- [x] Dignities table (rulership/exaltation/detriment/fall; modern + traditional
+      schemes, auto-selected by zodiac) + sect-aware Part of Fortune
+- [x] `astron transits` (moment vs natal cross-aspects, transiting planets read
+      through natal houses; `findCrossAspects` will also serve synastry in Phase 5)
+- [x] JSON output flag (`--json`) so other tools/apps can consume the CLI
 
 ## Phase 2 — Atlas & time correctness
 
