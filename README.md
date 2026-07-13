@@ -25,6 +25,8 @@ Phase 1 in progress. Working today:
   and void-of-course Moon periods (`astron ephemeris`)
 - **Returns & progressions**: solar/lunar return charts, secondary progressions,
   solar arc directions
+- **Relationship charts**: synastry (inter-aspects + house overlays), midpoint
+  composite, and Davison (time/space midpoint)
 - **Built-in atlas**: offline GeoNames gazetteer (34k cities) — `--place "Ulm, Germany"`
   resolves coordinates and time zone; endonyms and exonyms both work
 - **Historical time correctness**: IANA timezone/DST resolution, automatic Local Mean
@@ -81,6 +83,10 @@ pnpm --filter astron-cli --silent dev transits -d 1955-02-24 -t 21:15 -p "San Fr
 pnpm --filter astron-cli --silent dev return solar -d 1990-06-15 -t 10:00 -p "New Delhi" --year 2026
 pnpm --filter astron-cli --silent dev progressed -d 1990-06-15 -t 10:00 -p "New Delhi" --solar-arc
 pnpm --filter astron-cli --silent dev ephemeris --days 14 -z Australia/Perth
+
+# Relationship charts (synastry | composite | davison share the same options)
+pnpm --filter astron-cli --silent dev synastry \
+  -d 1990-06-15 -t 10:00 -p "New Delhi" --date2 1988-11-02 --time2 20:00 --place2 Perth
 
 # Chart wheel SVG (add --light for the print theme; transits give a bi-wheel)
 pnpm --filter astron-cli --silent dev natal -d 1879-03-14 -t 11:30 -p Ulm --svg wheel.svg

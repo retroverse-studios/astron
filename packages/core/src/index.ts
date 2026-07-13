@@ -12,3 +12,4 @@ export * from "./scan.js";
 export * from "./moon-events.js";
 export * from "./returns.js";
 export * from "./progressions.js";
+export * from "./relationships.js";

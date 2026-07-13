@@ -8,8 +8,11 @@ import {
 } from "@astron/atlas";
 import { loadAtlas } from "@astron/atlas/node";
 import {
+  compositeChart,
   computeChart,
+  davisonChart,
   dignities,
+  synastry,
   findCrossAspects,
   formatLongitude,
   houseOf,
@@ -310,12 +313,13 @@ function printAnglesAndLots(chart: Chart): void {
   }
 }
 
-function printAspects(aspects: Aspect[], title = "ASPECTS"): void {
+function printAspects(aspects: Aspect[], title = "ASPECTS", showApplying = true): void {
   if (!aspects.length) return;
   console.log(`\n  ${title}`);
   for (const a of aspects) {
     const label = `${BODY_NAMES[a.a]} ${a.name} ${BODY_NAMES[a.b]}`.padEnd(36);
-    console.log(`  ${BODY_GLYPHS[a.a]}–${BODY_GLYPHS[a.b]}  ${label}orb ${a.orb.toFixed(1)}°  ${a.applying ? "applying" : "separating"}`);
+    const motion = showApplying ? `  ${a.applying ? "applying" : "separating"}` : "";
+    console.log(`  ${BODY_GLYPHS[a.a]}–${BODY_GLYPHS[a.b]}  ${label}orb ${a.orb.toFixed(1)}°${motion}`);
   }
 }
 
@@ -327,12 +331,17 @@ function printVarga(chart: Chart, vargaOpt: string): void {
   }
 }
 
-function printChart(chart: Chart, moment: ResolvedMoment, opts: CommonOpts): void {
+function printChart(
+  chart: Chart,
+  moment: ResolvedMoment,
+  opts: CommonOpts,
+  showApplying = true,
+): void {
   for (const w of chart.warnings ?? []) console.log(`(${w})`);
   printHeader(chart, moment);
   printPositions(chart);
   printAnglesAndLots(chart);
-  printAspects(chart.aspects);
+  printAspects(chart.aspects, "ASPECTS", showApplying);
   if (opts.varga) printVarga(chart, opts.varga);
   console.log();
 }
@@ -604,6 +613,155 @@ program
     if (!lines.length) console.log("  (nothing found — quiet sky)");
     console.log();
   });
+
+interface PartnerOpts {
+  date2: string;
+  time2?: string;
+  zone2?: string;
+  place2?: string;
+  lat2?: string;
+  lon2?: string;
+}
+
+function addPartnerOptions(cmd: Command): Command {
+  return cmd
+    .requiredOption("--date2 <YYYY-MM-DD>", "second person's date of birth")
+    .option("--time2 <HH:MM>", "second person's time of birth")
+    .option("--zone2 <iana>", "second person's time zone (default: their place's)")
+    .option("--place2 <query>", "second person's birthplace")
+    .option("--lat2 <deg>", "second person's latitude")
+    .option("--lon2 <deg>", "second person's longitude");
+}
+
+/** Resolve the partner's moment by mapping the *2 options onto CommonOpts. */
+function resolvePartnerMoment(opts: CommonOpts & PartnerOpts): ResolvedMoment {
+  return resolveMoment(opts.date2, {
+    ...opts,
+    time: opts.time2,
+    zone: opts.zone2,
+    place: opts.place2,
+    lat: opts.lat2,
+    lon: opts.lon2,
+  });
+}
+
+function chartPair(
+  opts: CommonOpts & PartnerOpts & { date: string },
+  provider: SwephProvider,
+): { a: Chart; b: Chart; momentA: ResolvedMoment; momentB: ResolvedMoment } {
+  const momentA = resolveMoment(opts.date, opts);
+  const momentB = resolvePartnerMoment(opts);
+  return {
+    a: computeChart(buildInput(momentA, opts), provider),
+    b: computeChart(buildInput(momentB, opts), provider),
+    momentA,
+    momentB,
+  };
+}
+
+function syntheticMoment(chart: Chart, note: string): ResolvedMoment {
+  return {
+    utc: chart.utc,
+    calendar: "gregorian",
+    location: chart.location,
+    zone: "UTC",
+    wall: DateTime.fromJSDate(chart.utc, { zone: "UTC" }),
+    noTime: false,
+    timeNote: note,
+  };
+}
+
+addPartnerOptions(
+  addCommonOptions(
+    program
+      .command("synastry")
+      .description("two natal charts compared: inter-aspects and house overlays")
+      .requiredOption("-d, --date <YYYY-MM-DD>", "first person's date of birth"),
+  ),
+).action((opts: CommonOpts & PartnerOpts & { date: string }) => {
+  const provider = new SwephProvider();
+  const { a, b, momentA, momentB } = chartPair(opts, provider);
+  const result = synastry(a, b);
+  maybeWriteSvg(opts, () =>
+    renderWheel(a, {
+      ...wheelTheme(opts),
+      outer: { positions: b.positions, aspects: result.aspects.map((x) => ({ ...x, a: x.a, b: x.b })) },
+    }),
+  );
+  if (opts.json) {
+    console.log(
+      JSON.stringify(
+        { a: chartToJson(a, opts, momentA), b: chartToJson(b, opts, momentB), synastry: result },
+        null,
+        2,
+      ),
+    );
+    return;
+  }
+  console.log(`\n  SYNASTRY — A: ${opts.date} × B: ${opts.date2}`);
+  printHeader(a, momentA);
+  printHeader(b, momentB);
+  printAspects(result.aspects, "INTER-ASPECTS (A's planet → B's planet)", false);
+  const overlayLine = (o: { body: Body; house: number }) =>
+    `${BODY_GLYPHS[o.body]} ${BODY_NAMES[o.body]} → house ${o.house}`;
+  if (result.aInBHouses) {
+    console.log("\n  A'S PLANETS IN B'S HOUSES");
+    console.log("  " + result.aInBHouses.map(overlayLine).join("   "));
+  }
+  if (result.bInAHouses) {
+    console.log("\n  B'S PLANETS IN A'S HOUSES");
+    console.log("  " + result.bInAHouses.map(overlayLine).join("   "));
+  }
+  console.log();
+});
+
+addPartnerOptions(
+  addCommonOptions(
+    program
+      .command("composite")
+      .description("midpoint composite chart — the relationship as its own entity")
+      .requiredOption("-d, --date <YYYY-MM-DD>", "first person's date of birth"),
+  ),
+).action((opts: CommonOpts & PartnerOpts & { date: string }) => {
+  const provider = new SwephProvider();
+  const { a, b } = chartPair(opts, provider);
+  const comp = compositeChart(a, b);
+  const moment = syntheticMoment(
+    comp,
+    "midpoint composite; houses are whole-sign from the midpoint ascendant (one convention of several)",
+  );
+  maybeWriteSvg(opts, () => renderWheel(comp, wheelTheme(opts)));
+  if (opts.json) {
+    console.log(JSON.stringify(chartToJson(comp, opts, moment), null, 2));
+  } else {
+    console.log(`(${moment.timeNote})\n`);
+    printChart(comp, moment, opts, false);
+  }
+});
+
+addPartnerOptions(
+  addCommonOptions(
+    program
+      .command("davison")
+      .description("Davison chart — cast at the midpoint in time and space")
+      .requiredOption("-d, --date <YYYY-MM-DD>", "first person's date of birth"),
+  ),
+).action((opts: CommonOpts & PartnerOpts & { date: string }) => {
+  const provider = new SwephProvider();
+  const { a, b } = chartPair(opts, provider);
+  const dav = davisonChart(provider, a, b);
+  const moment = syntheticMoment(
+    dav,
+    `Davison: midpoint in time and space of ${opts.date} and ${opts.date2}`,
+  );
+  maybeWriteSvg(opts, () => renderWheel(dav, wheelTheme(opts)));
+  if (opts.json) {
+    console.log(JSON.stringify(chartToJson(dav, opts, moment), null, 2));
+  } else {
+    console.log(`(${moment.timeNote})\n`);
+    printChart(dav, moment, opts);
+  }
+});
 
 program
   .command("atlas")

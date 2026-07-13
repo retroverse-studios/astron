@@ -97,12 +97,19 @@ of a circular signed function, wrap-guarded, refined by bisection to ~1s.
 - [x] `astron ephemeris [--from --days -z]` — merged sky-events calendar.
 - Deferred: ephemeris/calendar view in the web app; transit scanning UI.
 
-## Phase 5 — Relationships
+## Phase 5 — Relationships ✅ (engine + CLI)
 
-- Synastry: bi-wheel overlay + inter-aspect grid + house overlays
-- Composite: midpoint chart (handle the 180° midpoint ambiguity correctly)
-- Davison: midpoint in time (average JD) and space (great-circle midpoint), then
-  it's just `computeChart` again
+- [x] Synastry (`synastry`): inter-aspects (applying/separating suppressed —
+      meaningless between birth charts) + house overlays both directions.
+      CLI: `astron synastry -d ... --date2 ... --place2 ...`, `--svg` bi-wheel.
+- [x] Composite (`compositeChart`): shorter-arc midpoints (deterministic 90°
+      convention for exact oppositions), speeds zeroed, whole-sign houses
+      from the midpoint ascendant, labelled as one convention of several.
+- [x] Davison (`davisonChart`): average JD + great-circle geographic
+      midpoint, then a real `computeChart` — genuine houses, speeds and
+      retrogrades (antipodal birthplaces rejected explicitly).
+- Deferred: relationship UI in the web app; compatibility "scoring"
+  (deliberately — a number would betray the honest-framing principle)
 
 ## Phase 6 — Desktop (Tauri)
 
