@@ -16,6 +16,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm -r build
+      # the desktop app is a Tauri build (Rust + webkit) — release workflow's job
+      - run: pnpm -r --filter '!astron-desktop' build
       - run: pnpm -r typecheck
       - run: pnpm -r test
