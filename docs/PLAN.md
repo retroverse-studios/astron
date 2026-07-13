@@ -108,8 +108,14 @@ of a circular signed function, wrap-guarded, refined by bisection to ~1s.
 - [x] Davison (`davisonChart`): average JD + great-circle geographic
       midpoint, then a real `computeChart` — genuine houses, speeds and
       retrogrades (antipodal birthplaces rejected explicitly).
-- Deferred: relationship UI in the web app; compatibility "scoring"
-  (deliberately — a number would betray the honest-framing principle)
+- [x] Compatibility **bouquet** instead of a score: blooms = flowing
+      inter-aspects, thorns = frictional ones, buds = conjunctions, sized by
+      planet weight and orb tightness (`synastryBouquet` in core,
+      `renderBouquet` SVG in charts, `astron synastry --bouquet <path>`).
+      Two counts side by side resist being read as a verdict; the
+      BOUQUET_DISCLAIMER ships in the profile and must accompany renders.
+- Deferred: relationship UI in the web app; numeric compatibility scoring
+  (deliberately rejected — the bouquet replaces it)
 
 ## Phase 6 — Desktop (Tauri)
 

@@ -27,6 +27,9 @@ Phase 1 in progress. Working today:
   solar arc directions
 - **Relationship charts**: synastry (inter-aspects + house overlays), midpoint
   composite, and Davison (time/space midpoint)
+- **The compatibility bouquet**: instead of a fake percentage, synastry draws a
+  bouquet — blooms for flowing aspects, thorns for frictional ones, buds for
+  conjunctions (`--bouquet out.svg`). Thorny bouquets are still bouquets.
 - **Built-in atlas**: offline GeoNames gazetteer (34k cities) — `--place "Ulm, Germany"`
   resolves coordinates and time zone; endonyms and exonyms both work
 - **Historical time correctness**: IANA timezone/DST resolution, automatic Local Mean

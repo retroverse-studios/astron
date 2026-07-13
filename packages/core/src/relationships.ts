@@ -114,6 +114,84 @@ export function compositeChart(a: Chart, b: Chart): Chart {
   };
 }
 
+export type BouquetKind = "bloom" | "thorn" | "bud";
+
+export interface BouquetItem {
+  kind: BouquetKind;
+  aspect: Aspect;
+  /**
+   * Visual weight in (0, 1]: how large this flower/thorn should draw.
+   * Luminaries and personal planets weigh more than outer planets; tighter
+   * orbs weigh more than wide ones.
+   */
+  weight: number;
+}
+
+export interface BouquetProfile {
+  items: BouquetItem[];
+  blooms: number;
+  thorns: number;
+  buds: number;
+  /** The disclaimer that must accompany any rendering of the bouquet. */
+  disclaimer: string;
+}
+
+const BOUQUET_KIND: Partial<Record<Aspect["name"], BouquetKind>> = {
+  trine: "bloom",
+  sextile: "bloom",
+  quintile: "bloom",
+  biquintile: "bloom",
+  semisextile: "bloom",
+  square: "thorn",
+  opposition: "thorn",
+  semisquare: "thorn",
+  sesquiquadrate: "thorn",
+  quincunx: "thorn",
+  conjunction: "bud",
+};
+
+const BODY_WEIGHT: Partial<Record<Body, number>> = {
+  sun: 3,
+  moon: 3,
+  venus: 2.5,
+  mars: 2.5,
+  mercury: 2,
+  jupiter: 1.5,
+  saturn: 1.5,
+};
+
+export const BOUQUET_DISCLAIMER =
+  "The bouquet pictures this tradition's aspect rules applied to two charts — " +
+  "it does not measure two people. Blooms are flowing aspects, thorns are " +
+  "frictional ones, buds are conjunctions that could open either way. " +
+  "Thorny bouquets are still bouquets: every rose garden has both.";
+
+/**
+ * Turn synastry inter-aspects into a bouquet: one bloom per harmonious
+ * aspect, one thorn per hard aspect, one bud per conjunction — sized by the
+ * planets involved and the tightness of the orb. Deliberately NOT a score:
+ * two numbers side by side resist being read as a verdict.
+ */
+export function synastryBouquet(aspects: Aspect[]): BouquetProfile {
+  const items: BouquetItem[] = [];
+  for (const aspect of aspects) {
+    const kind = BOUQUET_KIND[aspect.name];
+    if (!kind) continue;
+    const pair =
+      ((BODY_WEIGHT[aspect.a] ?? 1) + (BODY_WEIGHT[aspect.b] ?? 1)) / 6; // 1/3..1
+    const tightness = 1 - Math.min(aspect.orb / 8, 1) * 0.6; // 0.4..1
+    items.push({ kind, aspect, weight: Math.min(1, pair * tightness) });
+  }
+  items.sort((a, b) => b.weight - a.weight);
+  return {
+    items,
+    blooms: items.filter((i) => i.kind === "bloom").length,
+    thorns: items.filter((i) => i.kind === "thorn").length,
+    buds: items.filter((i) => i.kind === "bud").length,
+    disclaimer: BOUQUET_DISCLAIMER,
+  };
+}
+
 /** Great-circle midpoint of two places (undefined behaviour for antipodes). */
 export function geographicMidpoint(a: GeoLocation, b: GeoLocation): GeoLocation {
   const rad = Math.PI / 180;

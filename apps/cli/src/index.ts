@@ -13,6 +13,7 @@ import {
   davisonChart,
   dignities,
   synastry,
+  synastryBouquet,
   findCrossAspects,
   formatLongitude,
   houseOf,
@@ -43,7 +44,7 @@ import {
   type Varga,
 } from "@astron/core";
 import { SwephProvider } from "@astron/core/sweph";
-import { LIGHT_THEME, renderWheel } from "@astron/charts";
+import { LIGHT_THEME, renderBouquet, renderWheel } from "@astron/charts";
 import { Command } from "commander";
 import { DateTime } from "luxon";
 import { writeFileSync } from "node:fs";
@@ -676,12 +677,18 @@ addPartnerOptions(
     program
       .command("synastry")
       .description("two natal charts compared: inter-aspects and house overlays")
-      .requiredOption("-d, --date <YYYY-MM-DD>", "first person's date of birth"),
+      .requiredOption("-d, --date <YYYY-MM-DD>", "first person's date of birth")
+      .option("--bouquet <path>", "write the compatibility bouquet SVG to this file"),
   ),
-).action((opts: CommonOpts & PartnerOpts & { date: string }) => {
+).action((opts: CommonOpts & PartnerOpts & { date: string; bouquet?: string }) => {
   const provider = new SwephProvider();
   const { a, b, momentA, momentB } = chartPair(opts, provider);
   const result = synastry(a, b);
+  const bouquet = synastryBouquet(result.aspects);
+  if (opts.bouquet) {
+    writeFileSync(opts.bouquet, renderBouquet(bouquet, wheelTheme(opts)));
+    if (!opts.json) console.log(`(bouquet written to ${opts.bouquet})\n`);
+  }
   maybeWriteSvg(opts, () =>
     renderWheel(a, {
       ...wheelTheme(opts),
@@ -691,7 +698,12 @@ addPartnerOptions(
   if (opts.json) {
     console.log(
       JSON.stringify(
-        { a: chartToJson(a, opts, momentA), b: chartToJson(b, opts, momentB), synastry: result },
+        {
+          a: chartToJson(a, opts, momentA),
+          b: chartToJson(b, opts, momentB),
+          synastry: result,
+          bouquet,
+        },
         null,
         2,
       ),
@@ -712,6 +724,13 @@ addPartnerOptions(
     console.log("\n  B'S PLANETS IN A'S HOUSES");
     console.log("  " + result.bInAHouses.map(overlayLine).join("   "));
   }
+  console.log("\n  THE BOUQUET");
+  console.log(
+    `  ✿ ${bouquet.blooms} bloom${bouquet.blooms === 1 ? "" : "s"}   ` +
+      `⌇ ${bouquet.thorns} thorn${bouquet.thorns === 1 ? "" : "s"}   ` +
+      `● ${bouquet.buds} bud${bouquet.buds === 1 ? "" : "s"}`,
+  );
+  console.log(`  ${bouquet.disclaimer}`);
   console.log();
 });
 
