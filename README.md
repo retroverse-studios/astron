@@ -52,10 +52,9 @@ astron/
 │   └── ephemeris-wasm/  # Swiss Ephemeris WASM provider for browsers
 └── apps/
     ├── cli/             # astron command-line app
-    └── web/             # React web app — fully client-side charts
+    ├── web/             # React web app — fully client-side charts
+    └── desktop/         # Tauri 2 desktop app wrapping the web app
 ```
-
-Planned: `apps/desktop` (Tauri).
 
 ## Usage
 
@@ -96,6 +95,10 @@ pnpm --filter astron-cli --silent dev natal -d 1879-03-14 -t 11:30 -p Ulm --svg 
 
 # Web app — Swiss Ephemeris runs in the browser via WebAssembly
 pnpm --filter @astron/web dev   # http://localhost:5183
+
+# Desktop app (Tauri 2; needs Rust): dev window or installable bundle
+pnpm --filter astron-desktop dev
+pnpm --filter astron-desktop build   # .app/.dmg on macOS
 
 # Explicit coordinates still work (--lat 48.4 --lon 10.0 -z Europe/Berlin);
 # any command takes --json; city lookup: astron atlas <query>

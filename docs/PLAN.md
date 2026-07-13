@@ -117,12 +117,16 @@ of a circular signed function, wrap-guarded, refined by bisection to ~1s.
 - Deferred: relationship UI in the web app; numeric compatibility scoring
   (deliberately rejected — the bouquet replaces it)
 
-## Phase 6 — Desktop (Tauri)
+## Phase 6 — Desktop (Tauri) ✅ (local builds)
 
-- `apps/desktop`: Tauri 2 wrapping the web app; native file storage for chart library
-- CI builds/installers for macOS (arm64+x64), Windows, Linux via tauri-action
-- Decide: keep WASM ephemeris in the webview (simplest, one code path) vs native
-  Rust sweph via Tauri commands (faster, more plumbing). Default: WASM.
+- [x] `apps/desktop`: Tauri 2 wrapping the web app — `devUrl` points at the
+      Vite dev server, `frontendDist` at `apps/web/dist`, so the desktop app
+      is byte-identical to the web app. Ephemeris stays WASM in the webview
+      (one code path; a native Rust sweph bridge remains possible later).
+- [x] Phosphor chart-wheel app icon (assets/icon.svg → `tauri icon`).
+- [x] macOS .app + .dmg build (`pnpm --filter astron-desktop build`).
+- Deferred: CI installers for Windows/Linux via tauri-action (needs GitHub
+  Actions setup + signing decisions); native chart-library storage; auto-update.
 
 ## Phase 7 — Depth & polish
 
@@ -139,7 +143,10 @@ of a circular signed function, wrap-guarded, refined by bisection to ~1s.
 
 - AGPL-3.0 project-wide (Swiss Ephemeris requirement). Publishing source is fine;
   a closed commercial fork would need Astrodienst's paid license.
-- exFAT volume: macOS `._*` AppleDouble files break esbuild/native-module loading.
-  Mitigations in place (vitest/tsc excludes); `find . -name '._*' -delete` if it recurs.
+- exFAT volume: macOS `._*` AppleDouble files break esbuild/native-module loading
+  and Tauri's build script ("stream did not contain valid UTF-8"). Mitigations in
+  place: vitest/tsc excludes, and apps/desktop pins CARGO_TARGET_DIR to
+  ~/.cache/astron-cargo-target so Rust builds happen on APFS. If something else
+  chokes, `find . -name '._*' -delete` first.
 - `sweph` global sidereal state: `set_sid_mode` before every sidereal call (done in
   provider); revisit if we ever go multi-threaded.

@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="46%" r="60%">
+      <stop offset="0%" stop-color="#122a18"/>
+      <stop offset="100%" stop-color="#050705"/>
+    </radialGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="232" fill="url(#glow)"/>
+  <!-- chart wheel -->
+  <circle cx="512" cy="512" r="368" fill="none" stroke="#3f6f4a" stroke-width="14"/>
+  <circle cx="512" cy="512" r="308" fill="none" stroke="#3f6f4a" stroke-width="8"/>
+  <circle cx="512" cy="512" r="176" fill="none" stroke="#2c4f35" stroke-width="8"/>
+  <!-- horizon + meridian -->
+  <line x1="144" y1="512" x2="336" y2="512" stroke="#74c69d" stroke-width="16" stroke-linecap="round"/>
+  <line x1="688" y1="512" x2="880" y2="512" stroke="#74c69d" stroke-width="16" stroke-linecap="round"/>
+  <line x1="512" y1="144" x2="512" y2="336" stroke="#74c69d" stroke-width="16" stroke-linecap="round"/>
+  <line x1="512" y1="688" x2="512" y2="880" stroke="#74c69d" stroke-width="16" stroke-linecap="round"/>
+  <!-- aspect lines -->
+  <path d="M 360 424 L 664 424 L 512 688 Z" fill="none" stroke="#5fb381" stroke-width="10" opacity="0.9"/>
+  <line x1="360" y1="424" x2="655" y2="600" stroke="#e06c75" stroke-width="10" opacity="0.85"/>
+  <!-- planets on the wheel -->
+  <circle cx="360" cy="424" r="26" fill="#d8f3dc"/>
+  <circle cx="664" cy="424" r="22" fill="#7dcfff"/>
+  <circle cx="512" cy="688" r="22" fill="#ff9e64"/>
+  <circle cx="655" cy="600" r="18" fill="#bb9af7"/>
+  <!-- the ASTRON star, rising at the ascendant -->
+  <g transform="translate(240,512)" fill="#d8f3dc">
+    <path d="M 0 -64 L 14 -14 L 64 0 L 14 14 L 0 64 L -14 14 L -64 0 L -14 -14 Z"/>
+    <path d="M 34 -34 L 42 -12 L 34 34 L 12 12 Z" opacity="0"/>
+  </g>
+</svg>
