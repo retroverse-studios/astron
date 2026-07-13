@@ -20,7 +20,11 @@ Phase 1 in progress. Working today:
 - **Varga (divisional) charts**: D9 navamsa, D10 dashamsa
 - **Essential dignities** (domicile/exaltation/detriment/fall, modern + traditional
   rulers) and the sect-aware **Part of Fortune**
-- **Transits**: any moment's sky against a natal chart, read through natal houses
+- **Transits**: any moment's sky against a natal chart, read through natal houses,
+  plus a scanner for exact-hit dates (`--scan`), stations, ingresses, lunations,
+  and void-of-course Moon periods (`astron ephemeris`)
+- **Returns & progressions**: solar/lunar return charts, secondary progressions,
+  solar arc directions
 - **Built-in atlas**: offline GeoNames gazetteer (34k cities) — `--place "Ulm, Germany"`
   resolves coordinates and time zone; endonyms and exonyms both work
 - **Historical time correctness**: IANA timezone/DST resolution, automatic Local Mean
@@ -71,6 +75,12 @@ pnpm --filter astron-cli --silent dev natal -d 1879-03-14 -t 11:30 -p "Ulm, Germ
 
 # Julian calendar date
 pnpm --filter astron-cli --silent dev natal -d 1642-12-25 --julian -p "Grantham"
+
+# Exact transit dates, returns, progressions, sky calendar
+pnpm --filter astron-cli --silent dev transits -d 1955-02-24 -t 21:15 -p "San Francisco" --scan 30
+pnpm --filter astron-cli --silent dev return solar -d 1990-06-15 -t 10:00 -p "New Delhi" --year 2026
+pnpm --filter astron-cli --silent dev progressed -d 1990-06-15 -t 10:00 -p "New Delhi" --solar-arc
+pnpm --filter astron-cli --silent dev ephemeris --days 14 -z Australia/Perth
 
 # Chart wheel SVG (add --light for the print theme; transits give a bi-wheel)
 pnpm --filter astron-cli --silent dev natal -d 1879-03-14 -t 11:30 -p Ulm --svg wheel.svg

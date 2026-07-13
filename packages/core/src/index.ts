@@ -8,3 +8,7 @@ export * from "./dignities.js";
 export * from "./lots.js";
 export * from "./vargas.js";
 export * from "./chart.js";
+export * from "./scan.js";
+export * from "./moon-events.js";
+export * from "./returns.js";
+export * from "./progressions.js";

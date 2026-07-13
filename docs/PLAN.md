@@ -74,13 +74,28 @@ The classic source of wrong charts. Owned by `packages/atlas`:
 - Deferred to later phases: saved charts (IndexedDB), aspect-grid component,
   transit bi-wheel UI in the web app, deploy (astron.retroverse.studio)
 
-## Phase 4 — Time techniques
+## Phase 4 — Time techniques ✅ (engine + CLI)
 
-- Transit scanner: exact-hit dates for transiting aspects to natal points (root-find
-  on longitude difference), retrograde/station calendar, void-of-course Moon
-- Secondary progressions (day-per-year) + solar arc
-- Solar & lunar returns (root-find Sun/Moon return to natal longitude, chart at that instant)
-- Ephemeris/calendar view in web + `astron ephemeris` in CLI
+Everything sits on `findCrossings` (core/src/scan.ts): sampled zero-crossings
+of a circular signed function, wrap-guarded, refined by bisection to ~1s.
+
+- [x] Transit scanner (`scanTransits`): exact hits of transiting aspects to
+      natal points; each station pass reported separately (validated: the
+      2019 Saturn return's direct–retro–direct triple). Moon opt-in.
+      CLI: `astron transits --scan <days> [--moon]`.
+- [x] Stations (`scanStations`, validated against Mercury Aug/Sep 2023) and
+      sign ingresses incl. retrograde re-entries (`scanIngresses`, validated
+      against the 2000 equinox minute).
+- [x] Lunations (`scanLunations`, validated against the 8 Apr 2024 eclipse
+      new moon) and void-of-course Moon (`scanVoidOfCourse` — last exact
+      major aspect → ingress, empty-sign edge case handled).
+- [x] Solar & lunar returns (`solarReturn`/`lunarReturn`) — return charts in
+      the natal zodiac, relocatable. CLI: `astron return solar|lunar`.
+- [x] Secondary progressions + solar arc directions. CLI: `astron progressed
+      [--solar-arc]`. Progressed houses = progressed instant at natal place
+      (one convention of several; labelled as such).
+- [x] `astron ephemeris [--from --days -z]` — merged sky-events calendar.
+- Deferred: ephemeris/calendar view in the web app; transit scanning UI.
 
 ## Phase 5 — Relationships
 

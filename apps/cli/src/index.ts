@@ -14,9 +14,18 @@ import {
   formatLongitude,
   houseOf,
   isDayChart,
+  lunarReturn,
   MAJOR_ASPECTS,
   MINOR_ASPECTS,
   partOfFortune,
+  scanIngresses,
+  scanLunations,
+  scanStations,
+  scanTransits,
+  scanVoidOfCourse,
+  secondaryProgression,
+  solarArcDirections,
+  solarReturn,
   vargaSign,
   type Aspect,
   type Ayanamsa,
@@ -27,6 +36,7 @@ import {
   type GeoLocation,
   type HouseSystem,
   type RulershipScheme,
+  type TransitHit,
   type Varga,
 } from "@astron/core";
 import { SwephProvider } from "@astron/core/sweph";
@@ -393,8 +403,10 @@ addCommonOptions(
     .description("current (or chosen) sky against a natal chart")
     .requiredOption("-d, --date <YYYY-MM-DD>", "natal date")
     .option("--on <YYYY-MM-DD>", "transit date (default: today)")
-    .option("--at <HH:MM>", "transit time (default: now / noon with --on)"),
-).action((opts: CommonOpts & { date: string; on?: string; at?: string }) => {
+    .option("--at <HH:MM>", "transit time (default: now / noon with --on)")
+    .option("--scan <days>", "list exact transit hits in the coming N days")
+    .option("--moon", "include the transiting Moon in --scan"),
+).action((opts: CommonOpts & { date: string; on?: string; at?: string; scan?: string; moon?: boolean }) => {
   const provider = new SwephProvider();
   const natalMoment = resolveMoment(opts.date, opts);
   const natal = computeChart(buildInput(natalMoment, opts), provider);
@@ -425,6 +437,18 @@ addCommonOptions(
     }),
   );
 
+  const scanDays = opts.scan ? parseInt(opts.scan, 10) : 0;
+  const scanHits: TransitHit[] = scanDays
+    ? scanTransits(
+        provider,
+        natal.positions,
+        { from: sky.utc, days: scanDays, zodiac: natal.zodiac },
+        opts.moon
+          ? { bodies: ["sun", "moon", "mercury", "venus", "mars", "jupiter", "saturn", "uranus", "neptune", "pluto", "chiron"] }
+          : {},
+      )
+    : [];
+
   if (opts.json) {
     console.log(
       JSON.stringify(
@@ -433,6 +457,7 @@ addCommonOptions(
           transiting: sky.positions.map((p) => ({ ...p, formatted: formatLongitude(p.longitude) })),
           transitUtc: sky.utc,
           aspects: hits,
+          ...(scanDays ? { upcoming: scanHits } : {}),
         },
         null,
         2,
@@ -451,8 +476,134 @@ addCommonOptions(
     console.log(`  ${BODY_GLYPHS[p.body]}  ${name}${pos}${house}${rx}`);
   }
   printAspects(hits, "TRANSITING → NATAL (orb ≤ 3°)");
+  if (scanDays) {
+    console.log(`\n  EXACT HITS, NEXT ${scanDays} DAYS${opts.moon ? "" : " (Moon excluded; add --moon)"}`);
+    for (const h of scanHits) {
+      const when = DateTime.fromJSDate(h.utc).setZone(zone).toFormat("yyyy-LL-dd HH:mm");
+      const label = `${BODY_NAMES[h.transiting]} ${h.aspect} natal ${BODY_NAMES[h.natal]}`.padEnd(42);
+      console.log(`  ${when}  ${BODY_GLYPHS[h.transiting]}${h.retrograde ? "℞" : " "}–${BODY_GLYPHS[h.natal]}  ${label}`);
+    }
+    if (!scanHits.length) console.log("  (none)");
+  }
   console.log();
 });
+
+addCommonOptions(
+  program
+    .command("return")
+    .description("solar or lunar return chart")
+    .argument("<kind>", "solar | lunar")
+    .requiredOption("-d, --date <YYYY-MM-DD>", "natal date")
+    .option("--year <YYYY>", "solar return year (default: current)")
+    .option("--after <YYYY-MM-DD>", "lunar return after this date (default: today)"),
+).action(function (this: Command, kind: string, opts: CommonOpts & { date: string; year?: string; after?: string }) {
+    if (kind !== "solar" && kind !== "lunar") fail("kind must be solar or lunar");
+    const provider = new SwephProvider();
+    const natalMoment = resolveMoment(opts.date, opts);
+    const natal = computeChart(buildInput(natalMoment, opts), provider);
+    const chart =
+      kind === "solar"
+        ? solarReturn(provider, natal, opts.year ? parseInt(opts.year, 10) : new Date().getUTCFullYear())
+        : lunarReturn(provider, natal, opts.after ? new Date(`${opts.after}T00:00:00Z`) : new Date());
+    const local = DateTime.fromJSDate(chart.utc).setZone(natalMoment.zone);
+    const moment: ResolvedMoment = {
+      utc: chart.utc,
+      calendar: "gregorian",
+      location: chart.location,
+      zone: natalMoment.zone,
+      wall: DateTime.fromISO(local.toISO()!.slice(0, 16), { zone: "UTC" }),
+      noTime: false,
+      timeNote: `${kind} return for the natal chart of ${opts.date}`,
+    };
+    maybeWriteSvg(opts, () => renderWheel(chart, wheelTheme(opts)));
+    if (opts.json) {
+      console.log(JSON.stringify(chartToJson(chart, opts, moment), null, 2));
+    } else {
+      console.log(`(${moment.timeNote})\n`);
+      printChart(chart, moment, opts);
+    }
+  });
+
+addCommonOptions(
+  program
+    .command("progressed")
+    .description("secondary progressed chart (and optional solar arc directions)")
+    .requiredOption("-d, --date <YYYY-MM-DD>", "natal date")
+    .option("--to <YYYY-MM-DD>", "date the progression is read for (default: today)")
+    .option("--solar-arc", "also list solar arc directed positions"),
+).action(function (this: Command, opts: CommonOpts & { date: string; to?: string; solarArc?: boolean }) {
+    const provider = new SwephProvider();
+    const natalMoment = resolveMoment(opts.date, opts);
+    const natal = computeChart(buildInput(natalMoment, opts), provider);
+    const target = opts.to ? new Date(`${opts.to}T12:00:00Z`) : new Date();
+    const prog = secondaryProgression(provider, natal, target);
+    const arc = opts.solarArc ? solarArcDirections(provider, natal, target) : undefined;
+    const moment: ResolvedMoment = {
+      utc: prog.utc,
+      calendar: "gregorian",
+      location: prog.location,
+      zone: "UTC",
+      wall: DateTime.fromJSDate(prog.utc, { zone: "UTC" }),
+      noTime: false,
+      timeNote: `secondary progression of ${opts.date} read for ${(opts.to ?? "today")}`,
+    };
+    if (opts.json) {
+      console.log(
+        JSON.stringify(
+          {
+            progressed: chartToJson(prog, opts, moment),
+            ...(arc ? { solarArc: arc } : {}),
+          },
+          null,
+          2,
+        ),
+      );
+      return;
+    }
+    console.log(`(${moment.timeNote}; progressed houses are one convention of several)\n`);
+    printChart(prog, moment, opts);
+    if (arc) {
+      console.log(`  SOLAR ARC DIRECTIONS (arc ${arc.arc.toFixed(2)}°)`);
+      for (const p of arc.positions) {
+        console.log(`  ${BODY_GLYPHS[p.body]}  ${BODY_NAMES[p.body].padEnd(18)}${formatLongitude(p.longitude)}`);
+      }
+      console.log();
+    }
+  });
+
+program
+  .command("ephemeris")
+  .description("upcoming sky events: lunations, stations, ingresses, void-of-course Moon")
+  .option("--from <YYYY-MM-DD>", "start date (default: today)")
+  .option("--days <n>", "window length in days", "14")
+  .option("-z, --zone <iana>", "IANA time zone for display", "UTC")
+  .option("--json", "machine-readable JSON output")
+  .action((opts: { from?: string; days: string; zone: string; json?: boolean }) => {
+    const provider = new SwephProvider();
+    const from = opts.from ? new Date(`${opts.from}T00:00:00Z`) : new Date();
+    const days = parseInt(opts.days, 10);
+    const window = { from, days };
+    const lunations = scanLunations(provider, window);
+    const stations = scanStations(provider, window);
+    const ingresses = scanIngresses(provider, window);
+    const voc = scanVoidOfCourse(provider, window);
+    if (opts.json) {
+      console.log(JSON.stringify({ from, days, lunations, stations, ingresses, voidOfCourse: voc }, null, 2));
+      return;
+    }
+    const fmt = (d: Date) => DateTime.fromJSDate(d).setZone(opts.zone).toFormat("yyyy-LL-dd HH:mm");
+    const LUNATION_LABEL = { new: "● new moon", firstQuarter: "◐ first quarter", full: "○ full moon", lastQuarter: "◑ last quarter" };
+    console.log(`\n  SKY EVENTS — ${days} days from ${fmt(from)} (${opts.zone})\n`);
+    const lines: { jd: number; text: string }[] = [
+      ...lunations.map((e) => ({ jd: e.jd, text: `${fmt(e.utc)}  ${LUNATION_LABEL[e.type]} at ${formatLongitude(e.longitude)}` })),
+      ...stations.map((e) => ({ jd: e.jd, text: `${fmt(e.utc)}  ${BODY_GLYPHS[e.body]} ${BODY_NAMES[e.body]} stations ${e.type} at ${formatLongitude(e.longitude)}` })),
+      ...ingresses.filter((e) => e.body !== "moon").map((e) => ({ jd: e.jd, text: `${fmt(e.utc)}  ${BODY_GLYPHS[e.body]} ${BODY_NAMES[e.body]} ${e.retrograde ? "backs into" : "enters"} ${e.sign}` })),
+      ...voc.map((p) => ({ jd: p.jdStart, text: `${fmt(p.start)}  ☽ void-of-course until ${fmt(p.end)} (enters ${p.entering})` })),
+    ].sort((a, b) => a.jd - b.jd);
+    for (const l of lines) console.log(`  ${l.text}`);
+    if (!lines.length) console.log("  (nothing found — quiet sky)");
+    console.log();
+  });
 
 program
   .command("atlas")
