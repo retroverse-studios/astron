@@ -9,6 +9,9 @@ import {
 import { loadAtlas } from "@astron/atlas/node";
 import {
   antardashas,
+  candidateTimes,
+  rectify,
+  scanElectional,
   compositeChart,
   computeChart,
   dashaAt,
@@ -45,6 +48,7 @@ import {
   type GeoLocation,
   type HouseSystem,
   type RulershipScheme,
+  type Sign,
   type TransitHit,
   type Varga,
 } from "@astron/core";
@@ -854,6 +858,81 @@ addCommonOptions(
     }
   }
   console.log();
+});
+
+program
+  .command("electional")
+  .description("find windows worth choosing — the reverse of horary")
+  .option("--from <YYYY-MM-DD>", "start date (default: today)")
+  .option("--days <n>", "window length", "14")
+  .option("-z, --zone <iana>", "display time zone", "UTC")
+  .option("--allow-voc", "do not exclude void-of-course Moon periods")
+  .option("--avoid-retro <bodies>", "comma list, e.g. mercury,venus")
+  .option("--moon-signs <signs>", "comma list, e.g. Taurus,Cancer")
+  .option("--waxing", "waxing Moon only (new → full)")
+  .option("--json", "machine-readable JSON output")
+  .action((opts: {
+    from?: string; days: string; zone: string; allowVoc?: boolean;
+    avoidRetro?: string; moonSigns?: string; waxing?: boolean; json?: boolean;
+  }) => {
+    const provider = new SwephProvider();
+    const from = opts.from ? new Date(`${opts.from}T00:00:00Z`) : new Date();
+    const windows = scanElectional(provider, { from, days: parseInt(opts.days, 10) }, {
+      avoidVoidOfCourse: !opts.allowVoc,
+      avoidRetrograde: opts.avoidRetro?.split(",").map((s) => s.trim() as Body),
+      moonSigns: opts.moonSigns?.split(",").map((s) => s.trim() as Sign),
+      waxingMoon: opts.waxing,
+    });
+    if (opts.json) {
+      console.log(JSON.stringify(windows, null, 2));
+      return;
+    }
+    const fmtT = (d: Date) => DateTime.fromJSDate(d).setZone(opts.zone).toFormat("yyyy-LL-dd HH:mm");
+    console.log(`\n  ELECTIONAL WINDOWS (${opts.zone})\n`);
+    for (const w of windows) {
+      console.log(`  ${fmtT(w.start)} → ${fmtT(w.end)}   ☽ in ${w.moonSign}`);
+    }
+    if (!windows.length) console.log("  (no windows pass — loosen the criteria)");
+    console.log("\n  The windows dodge the classic cautions; whether a moment is right");
+    console.log("  for your purpose is a judgement the tradition reserves for you.\n");
+  });
+
+addCommonOptions(
+  program
+    .command("rectify")
+    .description("estimate an unknown birth time from dated life events (approximate!)")
+    .requiredOption("-d, --date <YYYY-MM-DD>", "date of birth")
+    .requiredOption("--events <dates>", "comma list of major life events, YYYY-MM-DD")
+    .option("--between <HH:MM-HH:MM>", "birth-time bracket to search", "00:00-23:59")
+    .option("--step <minutes>", "candidate spacing", "8")
+    .option("--top <n>", "how many candidates to show", "5"),
+).action((opts: CommonOpts & { date: string; events: string; between: string; step: string; top: string }) => {
+  const provider = new SwephProvider();
+  const [fromT, toT] = opts.between.split("-");
+  if (!fromT || !toT) fail("--between must look like 06:00-12:00");
+  const startMoment = resolveMoment(opts.date, { ...opts, time: fromT });
+  const endMoment = resolveMoment(opts.date, { ...opts, time: toT });
+  if (!startMoment.location) fail("rectification needs a birthplace (-p or --lat/--lon)");
+  const events = opts.events.split(",").map((s) => ({ utc: new Date(`${s.trim()}T12:00:00Z`) }));
+  const { candidates, disclaimer } = rectify(provider, {
+    location: startMoment.location,
+    candidates: candidateTimes(startMoment.utc, endMoment.utc, parseInt(opts.step, 10)),
+    events,
+  });
+  const top = candidates.slice(0, parseInt(opts.top, 10));
+  if (opts.json) {
+    console.log(JSON.stringify({ top, disclaimer }, null, 2));
+    return;
+  }
+  console.log(`\n  RECTIFICATION CANDIDATES (${events.length} events, ${candidates.length} times tested)\n`);
+  for (const c of top) {
+    const local = DateTime.fromJSDate(c.utc).setZone(startMoment.zone);
+    console.log(
+      `  ${local.toFormat("HH:mm")} ${startMoment.zone}  score ${c.score.toFixed(2).padStart(6)}  ` +
+        `ASC ${formatLongitude(c.ascendant)}  (${c.hits.length} angle hits)`,
+    );
+  }
+  console.log(`\n  ${disclaimer}\n`);
 });
 
 program

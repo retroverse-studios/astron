@@ -139,10 +139,25 @@ of a circular signed function, wrap-guarded, refined by bisection to ~1s.
 - [x] Part of Spirit (sect-reversed twin of Fortune)
 - [x] CI: test workflow on push; tauri-action release workflow on v* tags
       (macOS arm64+x64, Linux, Windows; unsigned drafts — signing later)
-- Remaining (7b): fixed stars, chart-type UI polish (vargas/harmonics/dashas
-  in the web app), interpretation text (LIGHT/TRUTH/SHADOW — biggest content
-  effort), PDF reports, electional search, rectification scanner (last,
-  clearly labelled approximate)
+### Phase 7b ✅ (electional, rectification, UI parity)
+
+- [x] Electional search (`scanElectional`): interval algebra over the
+      scanners — avoid VoC Moon / chosen retrogrades / Moon signs / waning
+      Moon; returns clean windows. CLI `astron electional`. Framed honestly:
+      the software dodges the classic cautions, the judgement stays yours.
+- [x] Rectification (`rectify` + `candidateTimes`): scores candidate birth
+      times by how tightly slow transits aspected the ASC/MC at dated life
+      events; blind test recovers a known time within 20 min from a 4 h
+      bracket. RECTIFICATION_DISCLAIMER travels with results. CLI
+      `astron rectify --between --events`.
+- [x] Web app: VARGA + HARMONIC panels on the natal tab, DASHAS tab
+      (mahadashas + antardashas, running periods marked, always sidereal).
+
+### Remaining (7c)
+
+- Fixed stars; interpretation text (LIGHT/TRUTH/SHADOW — biggest content
+  effort); PDF reports; electional/rectification UI in the web app;
+  code-signing for installers
 
 ## Known constraints
 

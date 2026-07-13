@@ -33,6 +33,11 @@ Phase 1 in progress. Working today:
 - **Depth**: harmonic charts (`--harmonic 9`), the full varga set
   (D1/D2/D3/D7/D9/D10/D12/D30/D60), Vimshottari dashas (`astron dashas`),
   Parts of Fortune and Spirit
+- **Electional search**: `astron electional` finds windows that dodge the classic
+  cautions (void-of-course Moon, chosen retrogrades, Moon signs, waning Moon)
+- **Rectification**: `astron rectify --between 06:00-12:00 --events ...` ranks
+  candidate birth times against dated life events — clearly labelled as the
+  best-guess technique it is
 - **Fully offline**: web app and desktop app compute everything locally —
   ephemeris, atlas and engine ship in the bundle; birth data never leaves
   your machine

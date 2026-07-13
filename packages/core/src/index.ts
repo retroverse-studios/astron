@@ -15,3 +15,5 @@ export * from "./progressions.js";
 export * from "./relationships.js";
 export * from "./harmonics.js";
 export * from "./dashas.js";
+export * from "./electional.js";
+export * from "./rectification.js";

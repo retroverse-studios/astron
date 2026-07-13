@@ -1,8 +1,12 @@
 import { renderBouquet, renderWheel } from "@astron/charts";
 import {
+  antardashas,
   compositeChart,
+  dashaAt,
   davisonChart,
   findCrossAspects,
+  formatLongitude,
+  harmonicChart,
   houseOf,
   lunarReturn,
   scanTransits,
@@ -11,10 +15,14 @@ import {
   solarReturn,
   synastry,
   synastryBouquet,
+  vargaSign,
+  vimshottariDashas,
   type Chart,
+  type DashaPeriod,
   type EphemerisProvider,
   type HouseSystem,
   type TransitHit,
+  type Varga,
 } from "@astron/core";
 import { DateTime } from "luxon";
 import { useState } from "react";
@@ -25,7 +33,7 @@ import { getProvider } from "./lib/astro";
 import { castNatal, castMoment, type ChartSettings, type PersonDraft } from "./lib/compute";
 import { useSavedPeople } from "./lib/people";
 
-const TABS = ["NATAL", "TRANSITS", "RETURNS", "PROGRESSED", "RELATIONSHIP"] as const;
+const TABS = ["NATAL", "TRANSITS", "RETURNS", "PROGRESSED", "DASHAS", "RELATIONSHIP"] as const;
 type Tab = (typeof TABS)[number];
 
 const wheelTheme = { theme: { background: "none" as const } };
@@ -95,11 +103,49 @@ function PersonPanel({
   );
 }
 
+const VARGAS: { value: Varga | ""; label: string }[] = [
+  { value: "", label: "none" },
+  { value: "d2", label: "D2 hora" },
+  { value: "d3", label: "D3 drekkana" },
+  { value: "d7", label: "D7 saptamsa" },
+  { value: "d9", label: "D9 navamsa" },
+  { value: "d10", label: "D10 dashamsa" },
+  { value: "d12", label: "D12 dvadasamsa" },
+  { value: "d30", label: "D30 trimsamsa" },
+  { value: "d60", label: "D60 shashtiamsa" },
+];
+
 function NatalTab({ person, setPerson, settings, scheme, peopleApi }: TabProps) {
   const cast = useCast<ReturnType<typeof castNatal>>();
+  const [varga, setVarga] = useState<Varga | "">("");
+  const [harmonic, setHarmonic] = useState("");
+  const harmonicN = parseInt(harmonic, 10);
   return (
     <div className="grid lg:grid-cols-[340px_1fr] gap-6">
       <PersonPanel title="BIRTH DATA" person={person} setPerson={setPerson} peopleApi={peopleApi}>
+        <div className="flex gap-2">
+          <div className="flex-1">
+            <label className={label}>VARGA</label>
+            <select value={varga} onChange={(e) => setVarga(e.target.value as Varga | "")} className={input}>
+              {VARGAS.map((v) => (
+                <option key={v.value} value={v.value}>
+                  {v.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex-1">
+            <label className={label}>HARMONIC</label>
+            <input
+              type="number"
+              min={2}
+              placeholder="none"
+              value={harmonic}
+              onChange={(e) => setHarmonic(e.target.value)}
+              className={input}
+            />
+          </div>
+        </div>
         <div className="flex gap-2">
           <button
             className={button + " flex-1"}
@@ -131,10 +177,127 @@ function NatalTab({ person, setPerson, settings, scheme, peopleApi }: TabProps) 
           <>
             <WheelBox svg={renderWheel(cast.result.chart, wheelTheme)} />
             <PlanetTable chart={cast.result.chart} scheme={scheme} />
+            {varga && (
+              <div className={panel + " p-4"}>
+                <h2 className="text-crt-dim text-xs mb-3 tracking-widest">
+                  VARGA {varga.toUpperCase()}
+                  {settings.zodiac.type === "tropical" && " (note: vargas are conventionally read sidereal)"}
+                </h2>
+                <p className="text-sm leading-7">
+                  {cast.result.chart.positions.map((p) => (
+                    <span key={p.body} className="mr-4 whitespace-nowrap">
+                      {GLYPHS[p.body]} {vargaSign(p.longitude, varga)}
+                    </span>
+                  ))}
+                </p>
+              </div>
+            )}
+            {harmonicN >= 2 && (
+              <div className={panel + " p-4"}>
+                <h2 className="text-crt-dim text-xs mb-3 tracking-widest">HARMONIC {harmonicN}</h2>
+                <p className="text-sm leading-7">
+                  {harmonicChart(cast.result.chart, harmonicN).positions.map((p) => (
+                    <span key={p.body} className="mr-4 whitespace-nowrap">
+                      {GLYPHS[p.body]} {formatLongitude(p.longitude)}
+                    </span>
+                  ))}
+                </p>
+              </div>
+            )}
             <AspectTable aspects={cast.result.chart.aspects} />
           </>
         ) : (
           <div className={panel + " p-16 text-center text-crt-dim"}>enter birth data and cast a chart</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function DashasTab({ person, setPerson, peopleApi }: TabProps) {
+  const cast = useCast<{ moonLon: number; periods: DashaPeriod[] }>();
+  const now = new Date();
+  const current = cast.result ? dashaAt(cast.result.periods, now) : undefined;
+  const cap = (s: string) => s[0]!.toUpperCase() + s.slice(1);
+  const fmtD = (d: Date) => DateTime.fromJSDate(d).toFormat("yyyy-LL-dd");
+
+  return (
+    <div className="grid lg:grid-cols-[340px_1fr] gap-6">
+      <PersonPanel title="BIRTH DATA" person={person} setPerson={setPerson} peopleApi={peopleApi}>
+        <button
+          className={button + " w-full"}
+          disabled={cast.busy}
+          onClick={() =>
+            void cast.run((p) => {
+              if (!person.city) throw new Error("Pick a birthplace first.");
+              const { chart } = castNatal(p, person, {
+                zodiac: { type: "sidereal", ayanamsa: "lahiri" },
+                houseSystem: "wholeSign",
+              });
+              const moon = chart.positions.find((x) => x.body === "moon")!;
+              return { moonLon: moon.longitude, periods: vimshottariDashas(moon.longitude, chart.utc) };
+            })
+          }
+        >
+          {cast.busy ? "computing…" : "COMPUTE DASHAS"}
+        </button>
+        {cast.error && <p className="text-red-400 text-sm">{cast.error}</p>}
+        {cast.result && (
+          <p className="text-xs text-crt-dim">
+            sidereal ☽ {formatLongitude(cast.result.moonLon)} (Lahiri) — Vimshottari is a Vedic
+            technique and always uses the sidereal Moon
+          </p>
+        )}
+      </PersonPanel>
+      <div className="space-y-6">
+        {cast.result ? (
+          <>
+            <div className={panel + " p-4"}>
+              <h2 className="text-crt-dim text-xs mb-3 tracking-widest">VIMSHOTTARI MAHADASHAS</h2>
+              <table className="w-full text-sm">
+                <tbody>
+                  {cast.result.periods.map((p, i) => (
+                    <tr key={i} className={"border-t border-crt-line/40" + (p === current ? " text-crt-bright" : "")}>
+                      <td className="py-1 pr-2">{p === current ? "▶" : ""}</td>
+                      <td className="py-1 pr-4">{cap(p.lord)}</td>
+                      <td className="py-1 text-crt-dim">
+                        {fmtD(p.start)} → {fmtD(p.end)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {current && (
+              <div className={panel + " p-4"}>
+                <h2 className="text-crt-dim text-xs mb-3 tracking-widest">
+                  ANTARDASHAS OF {cap(current.lord).toUpperCase()}
+                </h2>
+                <table className="w-full text-sm">
+                  <tbody>
+                    {antardashas(current).map((s, i) => {
+                      const running = s.start <= now && now < s.end;
+                      return (
+                        <tr key={i} className={"border-t border-crt-line/40" + (running ? " text-crt-bright" : "")}>
+                          <td className="py-1 pr-2">{running ? "▶" : ""}</td>
+                          <td className="py-1 pr-4">
+                            {cap(current.lord)}–{cap(s.lord)}
+                          </td>
+                          <td className="py-1 text-crt-dim">
+                            {fmtD(s.start)} → {fmtD(s.end)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className={panel + " p-16 text-center text-crt-dim"}>
+            the Vedic planetary periods — 120 years, nine lords
+          </div>
         )}
       </div>
     </div>
@@ -552,6 +715,7 @@ export default function App() {
       {tab === "TRANSITS" && <TransitsTab {...tabProps} />}
       {tab === "RETURNS" && <ReturnsTab {...tabProps} />}
       {tab === "PROGRESSED" && <ProgressedTab {...tabProps} />}
+      {tab === "DASHAS" && <DashasTab {...tabProps} />}
       {tab === "RELATIONSHIP" && <RelationshipTab {...tabProps} />}
 
       <footer className="mt-10 text-xs text-crt-dim leading-relaxed max-w-3xl">
