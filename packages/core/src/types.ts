@@ -159,8 +159,8 @@ export interface Chart {
   warnings?: string[];
 }
 
-/** Divisional (varga) charts supported so far. D1 is the rasi chart itself. */
-export type Varga = "d1" | "d9" | "d10";
+/** Divisional (varga) charts supported. D1 is the rasi chart itself. */
+export type Varga = "d1" | "d2" | "d3" | "d7" | "d9" | "d10" | "d12" | "d30" | "d60";
 
 export interface EphemerisProvider {
   julianDayUt(utc: Date, calendar?: CalendarSystem): number;

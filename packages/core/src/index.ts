@@ -13,3 +13,5 @@ export * from "./moon-events.js";
 export * from "./returns.js";
 export * from "./progressions.js";
 export * from "./relationships.js";
+export * from "./harmonics.js";
+export * from "./dashas.js";

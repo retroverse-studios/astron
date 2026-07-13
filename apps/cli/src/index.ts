@@ -8,12 +8,17 @@ import {
 } from "@astron/atlas";
 import { loadAtlas } from "@astron/atlas/node";
 import {
+  antardashas,
   compositeChart,
   computeChart,
+  dashaAt,
   davisonChart,
   dignities,
+  harmonicChart,
+  partOfSpirit,
   synastry,
   synastryBouquet,
+  vimshottariDashas,
   findCrossAspects,
   formatLongitude,
   houseOf,
@@ -92,6 +97,7 @@ interface CommonOpts {
   houses: string;
   sidereal?: string | boolean;
   varga?: string;
+  harmonic?: string;
   minorAspects?: boolean;
   json?: boolean;
   timeStandard?: "auto" | "iana" | "lmt";
@@ -301,10 +307,14 @@ function printAnglesAndLots(chart: Chart): void {
   console.log("\n  ANGLES & HOUSES");
   console.log(`  ASC ${formatLongitude(chart.houses.ascendant).padEnd(20)}MC ${formatLongitude(chart.houses.midheaven)}`);
   const pof = partOfFortune(chart);
+  const pos = partOfSpirit(chart);
   if (pof !== undefined) {
     const sun = chart.positions.find((p) => p.body === "sun")!;
     const sect = isDayChart(sun.longitude, chart.houses.ascendant) ? "day" : "night";
     console.log(`  ⊗   Part of Fortune ${formatLongitude(pof)}  (${sect} chart)`);
+  }
+  if (pos !== undefined) {
+    console.log(`  ⊙̸   Part of Spirit  ${formatLongitude(pos)}`);
   }
   const cuspCols = chart.houses.cusps
     .map((c, i) => `${String(i + 1).padStart(2)}: ${formatLongitude(c)}`)
@@ -344,6 +354,14 @@ function printChart(
   printAnglesAndLots(chart);
   printAspects(chart.aspects, "ASPECTS", showApplying);
   if (opts.varga) printVarga(chart, opts.varga);
+  if (opts.harmonic) {
+    const n = parseInt(opts.harmonic, 10);
+    const h = harmonicChart(chart, n);
+    console.log(`\n  HARMONIC ${n}`);
+    for (const p of h.positions) {
+      console.log(`  ${BODY_GLYPHS[p.body]}  ${BODY_NAMES[p.body].padEnd(18)}${formatLongitude(p.longitude)}`);
+    }
+  }
   console.log();
 }
 
@@ -356,7 +374,8 @@ function addCommonOptions(cmd: Command): Command {
     .option("--lon <deg>", "longitude, degrees east-positive")
     .option("--houses <system>", "placidus|wholeSign|equal|koch|campanus|regiomontanus|porphyry", "placidus")
     .option("--sidereal [ayanamsa]", "sidereal zodiac: lahiri (default), raman, krishnamurti, faganBradley")
-    .option("--varga <dN>", "also show a divisional chart: d1, d9, d10")
+    .option("--varga <dN>", "divisional chart: d1 d2 d3 d7 d9 d10 d12 d30 d60")
+    .option("--harmonic <n>", "also show the nth harmonic positions")
     .option("--minor-aspects", "include minor aspects")
     .option("--time-standard <mode>", "auto|iana|lmt — how to interpret clock time", "auto")
     .option("--julian", "date is in the Julian calendar (implies Local Mean Time)")
@@ -780,6 +799,61 @@ addPartnerOptions(
     console.log(`(${moment.timeNote})\n`);
     printChart(dav, moment, opts);
   }
+});
+
+addCommonOptions(
+  program
+    .command("dashas")
+    .description("Vimshottari mahadasha timeline (Vedic; sidereal Moon)")
+    .requiredOption("-d, --date <YYYY-MM-DD>", "date of birth"),
+).action((opts: CommonOpts & { date: string }) => {
+  const provider = new SwephProvider();
+  const moment = resolveMoment(opts.date, opts);
+  // Vimshottari is defined on the sidereal Moon regardless of the display zodiac.
+  const ayanamsa = typeof opts.sidereal === "string" ? (opts.sidereal as Ayanamsa) : "lahiri";
+  const moon = provider.bodyPosition(
+    provider.julianDayUt(moment.utc, moment.calendar),
+    "moon",
+    { type: "sidereal", ayanamsa },
+  );
+  const periods = vimshottariDashas(moon.longitude, moment.utc);
+  const now = new Date();
+  const current = dashaAt(periods, now);
+
+  if (opts.json) {
+    console.log(
+      JSON.stringify(
+        {
+          siderealMoon: moon.longitude,
+          ayanamsa,
+          mahadashas: periods,
+          current: current
+            ? { ...current, antardashas: antardashas(current) }
+            : undefined,
+        },
+        null,
+        2,
+      ),
+    );
+    return;
+  }
+
+  const cap = (s: string) => s[0]!.toUpperCase() + s.slice(1);
+  const fmtD = (d: Date) => DateTime.fromJSDate(d).toFormat("yyyy-LL-dd");
+  console.log(`\n  VIMSHOTTARI MAHADASHAS  (sidereal ☽ ${formatLongitude(moon.longitude)}, ${ayanamsa})\n`);
+  for (const p of periods) {
+    const marker = p === current ? "▶" : " ";
+    console.log(`  ${marker} ${cap(p.lord).padEnd(9)}${fmtD(p.start)} → ${fmtD(p.end)}`);
+  }
+  if (current) {
+    console.log(`\n  ANTARDASHAS OF ${cap(current.lord).toUpperCase()}`);
+    const subNow = dashaAt(antardashas(current), now);
+    for (const s of antardashas(current)) {
+      const marker = subNow && s.start.getTime() === subNow.start.getTime() ? "▶" : " ";
+      console.log(`  ${marker} ${cap(current.lord)}–${cap(s.lord).padEnd(9)}${fmtD(s.start)} → ${fmtD(s.end)}`);
+    }
+  }
+  console.log();
 });
 
 program

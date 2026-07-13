@@ -128,16 +128,21 @@ of a circular signed function, wrap-guarded, refined by bisection to ~1s.
 - Deferred: CI installers for Windows/Linux via tauri-action (needs GitHub
   Actions setup + signing decisions); native chart-library storage; auto-update.
 
-## Phase 7 — Depth & polish
+## Phase 7 — Depth & polish (7a ✅)
 
-- More vargas (D2–D60 as demanded), Vimshottari dasha periods
-- Harmonic charts (longitude × N mod 360 — trivial once wheel exists)
-- Arabic parts, fixed stars, vertex
-- Interpretation text — port NUMERON's LIGHT/TRUTH/SHADOW three-lens approach;
-  biggest content (not code) effort in the project
-- PDF reports (reuse NUMERON's @react-pdf patterns)
-- Electional search tools; event-based rectification scanner (batch transit-fit
-  scoring over a birth-time range) — last, and clearly labelled as approximate
+- [x] Vargas D2/D3/D7/D12/D30/D60 added (with D30's unequal Parashari spans);
+      tested including the navamsa ≡ 9th-harmonic identity
+- [x] Harmonic charts (`harmonicChart`, CLI `--harmonic <n>`)
+- [x] Vimshottari dashas: mahadashas from the sidereal Moon's nakshatra
+      balance, antardashas, `dashaAt`; CLI `astron dashas` with the running
+      periods marked
+- [x] Part of Spirit (sect-reversed twin of Fortune)
+- [x] CI: test workflow on push; tauri-action release workflow on v* tags
+      (macOS arm64+x64, Linux, Windows; unsigned drafts — signing later)
+- Remaining (7b): fixed stars, chart-type UI polish (vargas/harmonics/dashas
+  in the web app), interpretation text (LIGHT/TRUTH/SHADOW — biggest content
+  effort), PDF reports, electional search, rectification scanner (last,
+  clearly labelled approximate)
 
 ## Known constraints
 
