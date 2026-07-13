@@ -37,14 +37,16 @@ pnpm workspace monorepo:
 ```
 astron/
 ├── packages/
-│   ├── core/       # Calculation engine — sweph provider, houses, aspects, vargas
-│   └── atlas/      # Offline gazetteer (GeoNames), timezone/LMT resolution
+│   ├── core/            # Calculation engine — houses, aspects, dignities, vargas
+│   ├── atlas/           # Offline gazetteer (GeoNames), timezone/LMT resolution
+│   ├── charts/          # SVG chart wheel renderer (natal wheels, bi-wheels)
+│   └── ephemeris-wasm/  # Swiss Ephemeris WASM provider for browsers
 └── apps/
-    └── cli/        # astron command-line app
+    ├── cli/             # astron command-line app
+    └── web/             # React web app — fully client-side charts
 ```
 
-Planned: `packages/charts` (SVG wheel renderer), `apps/web` (React + Vite),
-`apps/desktop` (Tauri).
+Planned: `apps/desktop` (Tauri).
 
 ## Usage
 
@@ -69,6 +71,12 @@ pnpm --filter astron-cli --silent dev natal -d 1879-03-14 -t 11:30 -p "Ulm, Germ
 
 # Julian calendar date
 pnpm --filter astron-cli --silent dev natal -d 1642-12-25 --julian -p "Grantham"
+
+# Chart wheel SVG (add --light for the print theme; transits give a bi-wheel)
+pnpm --filter astron-cli --silent dev natal -d 1879-03-14 -t 11:30 -p Ulm --svg wheel.svg
+
+# Web app — Swiss Ephemeris runs in the browser via WebAssembly
+pnpm --filter @astron/web dev   # http://localhost:5183
 
 # Explicit coordinates still work (--lat 48.4 --lon 10.0 -z Europe/Berlin);
 # any command takes --json; city lookup: astron atlas <query>

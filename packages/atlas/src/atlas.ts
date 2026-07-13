@@ -1,8 +1,3 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
-import { fileURLToPath } from "node:url";
-import { gunzipSync } from "node:zlib";
-
 export interface City {
   name: string;
   alternates: string[];
@@ -24,7 +19,7 @@ function normalize(s: string): string {
     .trim();
 }
 
-function parseRows(tsv: string): City[] {
+export function parseCityTsv(tsv: string): City[] {
   return tsv.split("\n").map((line) => {
     const c = line.split("\t");
     return {
@@ -45,22 +40,19 @@ function parseRows(tsv: string): City[] {
  * Offline gazetteer over GeoNames cities15000 (population > 15k or capitals).
  * Queries take "City", "City, Country" or "City, Region, Country" form; the
  * qualifiers match country/region/country-code as substrings.
+ *
+ * Construct with a City[] (browser: fetch the bundled tsv.gz, decompress,
+ * `Atlas.fromTsv(text)`); in Node use `loadAtlas()` from "@astron/atlas/node".
  */
 export class Atlas {
   private cities: City[];
 
-  constructor(cities?: City[]) {
-    if (cities) {
-      this.cities = cities;
-    } else {
-      const path = join(
-        fileURLToPath(new URL(".", import.meta.url)),
-        "..",
-        "data",
-        "cities.tsv.gz",
-      );
-      this.cities = parseRows(gunzipSync(readFileSync(path)).toString("utf8"));
-    }
+  constructor(cities: City[]) {
+    this.cities = cities;
+  }
+
+  static fromTsv(tsv: string): Atlas {
+    return new Atlas(parseCityTsv(tsv));
   }
 
   get size(): number {

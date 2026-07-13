@@ -1,0 +1,38 @@
+@import "tailwindcss";
+
+@theme {
+  --color-crt-bg: #050705;
+  --color-crt-panel: #0a120c;
+  --color-crt-line: #1e3a26;
+  --color-crt-dim: #4f7f5c;
+  --color-crt-text: #a8e0b0;
+  --color-crt-bright: #d8f3dc;
+  --color-crt-amber: #e8c47a;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+body {
+  background: var(--color-crt-bg);
+  color: var(--color-crt-text);
+  font-family: var(--font-mono);
+}
+
+/* faint scanlines, the retroverse signature */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 2px,
+    rgba(0, 0, 0, 0.18) 3px
+  );
+  z-index: 50;
+}
+
+input,
+select {
+  color-scheme: dark;
+}

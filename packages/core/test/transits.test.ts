@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { findCrossAspects } from "../src/aspects.js";
-import { computeChart, SwephProvider } from "../src/index.js";
+import { computeChart } from "../src/index.js";
+import { SwephProvider } from "../src/ephemeris/sweph-provider.js";
 import type { BodyPosition } from "../src/types.js";
 import { degreeInSign, signOf } from "../src/zodiac.js";
 

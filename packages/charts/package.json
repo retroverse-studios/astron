@@ -1,7 +1,7 @@
 {
-  "name": "@astron/core",
+  "name": "@astron/charts",
   "version": "0.1.0",
-  "description": "ASTRON calculation engine — ephemeris, houses, aspects, vargas. Pure TypeScript API over a pluggable ephemeris provider.",
+  "description": "ASTRON chart wheel renderer — dependency-free SVG output for natal wheels and transit bi-wheels.",
   "license": "AGPL-3.0-only",
   "type": "module",
   "main": "./dist/index.js",
@@ -10,26 +10,18 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
-    },
-    "./sweph": {
-      "types": "./dist/ephemeris/sweph-provider.d.ts",
-      "default": "./dist/ephemeris/sweph-provider.js"
     }
   },
-  "files": [
-    "dist",
-    "ephe"
-  ],
+  "files": ["dist"],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "sweph": "2.10.3-7"
+    "@astron/core": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "^22",
     "typescript": "^5.7.0",
     "vitest": "^2.1.9"
   }

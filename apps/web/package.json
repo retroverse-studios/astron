@@ -1,0 +1,36 @@
+{
+  "name": "@astron/web",
+  "version": "0.1.0",
+  "description": "ASTRON web app — natal charts in the browser, no server.",
+  "license": "AGPL-3.0-only",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "predev": "node scripts/sync-wasm.mjs",
+    "dev": "vite",
+    "prebuild": "node scripts/sync-wasm.mjs",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@astron/atlas": "workspace:*",
+    "@astron/charts": "workspace:*",
+    "@astron/core": "workspace:*",
+    "@astron/ephemeris-wasm": "workspace:*",
+    "luxon": "^3.5.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "swisseph-wasm": "^0.0.5"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.0.0",
+    "@types/luxon": "^3.4.2",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.7.0",
+    "vite": "^6.0.0"
+  }
+}

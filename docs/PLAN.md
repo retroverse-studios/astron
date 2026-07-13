@@ -51,17 +51,28 @@ The classic source of wrong charts. Owned by `packages/atlas`:
 - Deferred: towns under 15k population (needs cities500 or a paid gazetteer);
   formal no-time semantics in core (CLI handles it)
 
-## Phase 3 — Chart wheel + web app
+## Phase 3 — Chart wheel + web app ✅ (core done)
 
-- `packages/charts`: SVG wheel renderer (signs, houses, glyphs, aspect lines,
-  collision-avoiding glyph layout; retroverse aesthetic). SVG renders identically in
-  browser, Tauri webview, CLI file export, and future PDF.
-- Bi-wheel support (natal inner, transit outer) from the start; aspect grid component
-- `apps/web`: React + Vite + Tailwind + Zustand (NUMERON stack), chart form,
-  saved charts (IndexedDB), tropical/sidereal toggle
-- Swap `sweph` for a Swiss Ephemeris **WASM** provider in the browser
-  (`@swisseph/browser` or `swisseph-wasm`; same `EphemerisProvider` interface —
-  this is why the interface exists)
+- [x] `packages/charts`: dependency-free SVG wheel renderer — sign band with
+      element tints, degree ticks, house cusps + numbers, ASC/MC axes,
+      collision-avoiding glyph layout, aspect lines, retrogrades, phosphor
+      and ink-on-paper themes. Bi-wheel (outer ring + cross-aspect lines,
+      tight-orb filtered).
+- [x] CLI `--svg <path>` (natal/now wheels, transit bi-wheels), `--light` theme
+- [x] `packages/ephemeris-wasm`: Swiss Ephemeris WASM provider
+      (swisseph-wasm), parity-tested against the native provider (positions,
+      ayanamsa < 1″, houses, sidereal whole-sign recomputed from the sidereal
+      ascendant since swe_houses is tropical-only in that build)
+- [x] `apps/web`: React + Vite + Tailwind v4, phosphor-CRT theme, atlas-backed
+      place search (fetched + decompressed in-browser), tropical/sidereal and
+      house-system toggles, wheel + planets/dignities/aspects tables, LMT and
+      no-time notices. Fully client-side; production build verified.
+      Gotchas encoded in the repo: exclude swisseph-wasm from Vite
+      optimizeDeps; sync .wasm/.data to public/wasm/ (scripts/sync-wasm.mjs);
+      detect gzip magic bytes because dev servers Content-Encoding-decode
+      .gz assets.
+- Deferred to later phases: saved charts (IndexedDB), aspect-grid component,
+  transit bi-wheel UI in the web app, deploy (astron.retroverse.studio)
 
 ## Phase 4 — Time techniques
 

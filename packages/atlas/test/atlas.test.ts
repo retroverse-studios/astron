@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { Atlas, formatCity } from "../src/atlas.js";
+import { formatCity } from "../src/atlas.js";
+import { loadAtlas } from "../src/node.js";
 import { formatOffset, lmtOffsetMinutes, localToUtc } from "../src/time.js";
 
-const atlas = new Atlas();
+const atlas = loadAtlas();
 
 describe("city search", () => {
   it("loads the GeoNames database", () => {

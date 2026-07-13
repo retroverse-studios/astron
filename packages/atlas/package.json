@@ -10,7 +10,12 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
-    }
+    },
+    "./node": {
+      "types": "./dist/node.d.ts",
+      "default": "./dist/node.js"
+    },
+    "./data/cities.tsv.gz": "./data/cities.tsv.gz"
   },
   "files": ["dist", "data"],
   "scripts": {

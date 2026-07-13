@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 import {
-  Atlas,
   formatCity,
   formatOffset,
   lmtOffsetMinutes,
   localToUtc,
+  type Atlas,
 } from "@astron/atlas";
+import { loadAtlas } from "@astron/atlas/node";
 import {
   computeChart,
   dignities,
@@ -16,7 +17,6 @@ import {
   MAJOR_ASPECTS,
   MINOR_ASPECTS,
   partOfFortune,
-  SwephProvider,
   vargaSign,
   type Aspect,
   type Ayanamsa,
@@ -29,8 +29,11 @@ import {
   type RulershipScheme,
   type Varga,
 } from "@astron/core";
+import { SwephProvider } from "@astron/core/sweph";
+import { LIGHT_THEME, renderWheel } from "@astron/charts";
 import { Command } from "commander";
 import { DateTime } from "luxon";
+import { writeFileSync } from "node:fs";
 
 const BODY_GLYPHS: Record<Body, string> = {
   sun: "☉",
@@ -79,11 +82,23 @@ interface CommonOpts {
   json?: boolean;
   timeStandard?: "auto" | "iana" | "lmt";
   julian?: boolean;
+  svg?: string;
+  light?: boolean;
+}
+
+function maybeWriteSvg(opts: CommonOpts, render: () => string): void {
+  if (!opts.svg) return;
+  writeFileSync(opts.svg, render());
+  if (!opts.json) console.log(`(wheel written to ${opts.svg})\n`);
+}
+
+function wheelTheme(opts: CommonOpts) {
+  return opts.light ? { theme: LIGHT_THEME } : {};
 }
 
 let sharedAtlas: Atlas | undefined;
 function getAtlas(): Atlas {
-  return (sharedAtlas ??= new Atlas());
+  return (sharedAtlas ??= loadAtlas());
 }
 
 interface ResolvedMoment {
@@ -325,6 +340,8 @@ function addCommonOptions(cmd: Command): Command {
     .option("--minor-aspects", "include minor aspects")
     .option("--time-standard <mode>", "auto|iana|lmt — how to interpret clock time", "auto")
     .option("--julian", "date is in the Julian calendar (implies Local Mean Time)")
+    .option("--svg <path>", "write a chart wheel SVG to this file")
+    .option("--light", "use the ink-on-paper wheel theme (with --svg)")
     .option("--json", "machine-readable JSON output");
 }
 
@@ -341,6 +358,7 @@ addCommonOptions(
 ).action((opts: CommonOpts & { date: string }) => {
   const moment = resolveMoment(opts.date, opts);
   const chart = computeChart(buildInput(moment, opts), new SwephProvider());
+  maybeWriteSvg(opts, () => renderWheel(chart, wheelTheme(opts)));
   if (opts.json) {
     console.log(JSON.stringify(chartToJson(chart, opts, moment), null, 2));
   } else {
@@ -361,6 +379,7 @@ addCommonOptions(
     time: nowLocal.toFormat("HH:mm"),
   });
   const chart = computeChart(buildInput(moment, opts), new SwephProvider());
+  maybeWriteSvg(opts, () => renderWheel(chart, wheelTheme(opts)));
   if (opts.json) {
     console.log(JSON.stringify(chartToJson(chart, opts, moment), null, 2));
   } else {
@@ -399,6 +418,12 @@ addCommonOptions(
     for (const p of sky.positions) p.house = houseOf(p.longitude, natal.houses);
   }
   const hits = findCrossAspects(sky.positions, natal.positions);
+  maybeWriteSvg(opts, () =>
+    renderWheel(natal, {
+      ...wheelTheme(opts),
+      outer: { positions: sky.positions, aspects: hits },
+    }),
+  );
 
   if (opts.json) {
     console.log(

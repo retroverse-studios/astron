@@ -4,3 +4,6 @@ coverage/
 *.log
 .DS_Store
 ._*
+
+# Emscripten assets synced from node_modules by apps/web/scripts/sync-wasm.mjs
+apps/web/public/wasm/

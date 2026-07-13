@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { dignities, rulerOf } from "../src/dignities.js";
 import { isDayChart, partOfFortune } from "../src/lots.js";
-import { computeChart, SwephProvider } from "../src/index.js";
+import { computeChart } from "../src/index.js";
+import { SwephProvider } from "../src/ephemeris/sweph-provider.js";
 import { norm360 } from "../src/zodiac.js";
 
 describe("essential dignities", () => {

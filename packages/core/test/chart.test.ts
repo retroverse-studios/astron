@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
-import {
-  computeChart,
-  SwephProvider,
-  type Chart,
-} from "../src/index.js";
+import { computeChart, type Chart } from "../src/index.js";
+import { SwephProvider } from "../src/ephemeris/sweph-provider.js";
 
 const provider = new SwephProvider();
 
@@ -95,6 +92,22 @@ describe("calendar systems", () => {
     expect(chart.positions.some((p) => p.body === "sun")).toBe(true);
     expect(chart.positions.some((p) => p.body === "chiron")).toBe(false);
     expect(chart.warnings?.some((w) => w.includes("chiron"))).toBe(true);
+  });
+});
+
+describe("pure julianDayUtc matches the Swiss Ephemeris", () => {
+  it("agrees for modern, historical, and Julian-calendar dates", async () => {
+    const { julianDayUtc } = await import("../src/time.js");
+    const dates: [Date, "gregorian" | "julian"][] = [
+      [new Date(Date.UTC(2000, 0, 1, 12)), "gregorian"],
+      [new Date(Date.UTC(2026, 6, 13, 4, 30, 15)), "gregorian"],
+      [new Date(Date.UTC(1879, 2, 14, 10, 50)), "gregorian"],
+      [new Date(Date.UTC(1642, 11, 25, 2)), "julian"],
+      [new Date(Date.UTC(1582, 9, 5, 12)), "julian"],
+    ];
+    for (const [d, cal] of dates) {
+      expect(julianDayUtc(d, cal)).toBeCloseTo(provider.julianDayUt(d, cal), 8);
+    }
   });
 });
 
