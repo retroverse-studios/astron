@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ASTRON — The Clockwork of the Heavens, Charted</title>
+    <meta name="description" content="An astrology chart engine running the real Swiss Ephemeris in your browser. Natal charts, transits, synastry — tropical and sidereal side by side. A Retroverse Studios project." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div class="scanlines" aria-hidden="true"></div>
+
+    <div class="container">
+      <!-- Top bar -->
+      <nav class="topbar">
+        <a href="/" class="brand">✷ ASTRON</a>
+        <div class="topbar-links">
+          <a href="#features">Features</a>
+          <a href="#download">Download</a>
+          <a href="https://github.com/retroverse-studios/astron" target="_blank" rel="noopener">GitHub</a>
+          <a href="https://retroverse.studio" class="studio-link">Retroverse&nbsp;Studios</a>
+        </div>
+      </nav>
+
+      <!-- Hero: copy left, orrery right -->
+      <header class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">A RETROVERSE STUDIOS PROJECT</p>
+          <h1 class="hero-title">ASTRON</h1>
+          <p class="hero-tagline">The Clockwork of the Heavens, Charted.</p>
+          <p class="hero-pitch">
+            An astrology chart engine with the real Swiss Ephemeris compiled to
+            WebAssembly. Natal charts, transits, returns, synastry — computed
+            entirely in your browser, to professional-grade precision.
+          </p>
+          <ul class="hero-points">
+            <li>Real astronomy — the same ephemeris the professionals use</li>
+            <li>Western tropical &amp; Vedic sidereal, both first-class</li>
+            <li>Fully offline — no server, no accounts, no tracking</li>
+          </ul>
+          <div class="hero-cta">
+            <a href="/app/" class="btn btn-primary">[ ▶ OPEN IN BROWSER ]</a>
+            <a href="#download" class="btn btn-secondary" id="heroDownload">[ ⬇ DOWNLOAD DESKTOP ]</a>
+          </div>
+          <p class="hero-dlnote" id="heroDlNote">Free &amp; open source · Windows, macOS, Linux</p>
+        </div>
+
+        <div class="hero-visual" aria-hidden="true">
+          <div class="crt-frame">
+            <svg class="orrery" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+              <!-- starfield -->
+              <g class="stars">
+                <circle cx="46" cy="58" r="1.2" /><circle cx="341" cy="42" r="0.9" />
+                <circle cx="372" cy="150" r="1.1" /><circle cx="25" cy="210" r="0.8" />
+                <circle cx="65" cy="345" r="1.0" /><circle cx="330" cy="330" r="1.2" />
+                <circle cx="210" cy="22" r="0.8" /><circle cx="380" cy="260" r="0.9" />
+                <circle cx="18" cy="120" r="0.9" /><circle cx="160" cy="382" r="0.8" />
+              </g>
+
+              <!-- zodiac ring -->
+              <circle class="ring ring-outer" cx="200" cy="200" r="188" />
+              <circle class="ring" cx="200" cy="200" r="156" />
+              <g class="zodiac rot-slowest">
+                <text x="200" y="34">♈</text>
+                <text x="286" y="57">♉</text>
+                <text x="349" y="120" >♊</text>
+                <text x="372" y="206">♋</text>
+                <text x="349" y="292">♌</text>
+                <text x="286" y="355">♍</text>
+                <text x="200" y="378">♎</text>
+                <text x="114" y="355">♏</text>
+                <text x="51" y="292">♐</text>
+                <text x="28" y="206">♑</text>
+                <text x="51" y="120">♒</text>
+                <text x="114" y="57">♓</text>
+              </g>
+
+              <!-- house spokes -->
+              <g class="spokes">
+                <line x1="200" y1="44" x2="200" y2="356" />
+                <line x1="44" y1="200" x2="356" y2="200" />
+                <line x1="90" y1="90" x2="310" y2="310" />
+                <line x1="310" y1="90" x2="90" y2="310" />
+              </g>
+
+              <!-- orbit paths -->
+              <circle class="orbit-path" cx="200" cy="200" r="128" />
+              <circle class="orbit-path" cx="200" cy="200" r="100" />
+              <circle class="orbit-path" cx="200" cy="200" r="72" />
+              <circle class="orbit-path" cx="200" cy="200" r="46" />
+
+              <!-- aspect figure (rotates against the planets) -->
+              <g class="aspects rot-reverse">
+                <polygon points="200,72 311,264 89,264" />
+                <line x1="200" y1="72" x2="200" y2="328" class="aspect-hard" />
+              </g>
+
+              <!-- planets on their orbits -->
+              <g class="rot planet-1"><circle class="planet p-bright" cx="200" cy="72" r="5" /></g>
+              <g class="rot planet-2"><circle class="planet p-blue" cx="200" cy="100" r="4" /></g>
+              <g class="rot planet-3"><circle class="planet p-amber" cx="200" cy="128" r="4.5" /></g>
+              <g class="rot planet-4"><circle class="planet p-red" cx="200" cy="154" r="3.5" /></g>
+
+              <!-- centre -->
+              <circle class="centre-dot" cx="200" cy="200" r="6" />
+              <text class="centre-glyph" x="200" y="207">✷</text>
+            </svg>
+          </div>
+        </div>
+      </header>
+
+      <!-- Features -->
+      <section class="features" id="features">
+        <div class="feature-card">
+          <h3>&gt; NATAL CHARTS</h3>
+          <p>Sun through Pluto, lunar nodes, Chiron, Lilith — retrogrades flagged, seven house systems, applying and separating aspects.</p>
+        </div>
+        <div class="feature-card">
+          <h3>&gt; TWO ZODIACS</h3>
+          <p>Tropical and sidereal side by side, with Lahiri, Raman, Krishnamurti and Fagan-Bradley ayanamsas. Full varga set included.</p>
+        </div>
+        <div class="feature-card">
+          <h3>&gt; TRANSITS &amp; RETURNS</h3>
+          <p>Any moment's sky against your chart. Solar and lunar returns, secondary progressions, solar arc directions, dashas.</p>
+        </div>
+        <div class="feature-card">
+          <h3>&gt; SYNASTRY</h3>
+          <p>Inter-aspects, house overlays, composite and Davison charts — and a compatibility bouquet instead of a fake percentage.</p>
+        </div>
+        <div class="feature-card">
+          <h3>&gt; REAL EPHEMERIS</h3>
+          <p>The Swiss Ephemeris compiled to WebAssembly. Professional-grade planetary positions, computed entirely client-side.</p>
+        </div>
+        <div class="feature-card">
+          <h3>&gt; FULLY PRIVATE</h3>
+          <p>No server, no accounts, no analytics. Your birth data never leaves your machine — in the browser or on the desktop.</p>
+        </div>
+      </section>
+
+      <!-- Honest framing -->
+      <section class="honest">
+        <h2>&gt; WHAT THIS IS</h2>
+        <p>
+          ASTRON is a real astronomical calculation engine attached to an old
+          interpretive tradition. The positions are as accurate as professional
+          software — it is the same ephemeris. Whether they mean anything about
+          your life is a question for the tradition, not for the maths, and we
+          keep the two clearly separated.
+        </p>
+        <p>
+          The maths is real and shown honestly. The meaning belongs to the
+          tradition, not to fate.
+        </p>
+      </section>
+
+      <!-- Download -->
+      <section class="download" id="download">
+        <h2>&gt; DOWNLOAD DESKTOP</h2>
+        <p class="download-version" id="dlVersion">Checking for the latest release…</p>
+        <div class="platforms" id="platforms" hidden>
+          <div class="platform" data-platform="windows">
+            <h3>WINDOWS</h3>
+            <div class="platform-pills">
+              <a class="pill" data-asset="win-setup" hidden>Installer <span>.exe</span></a>
+              <a class="pill pill-alt" data-asset="win-msi" hidden>MSI package <span>.msi</span></a>
+            </div>
+          </div>
+          <div class="platform" data-platform="mac">
+            <h3>MACOS</h3>
+            <div class="platform-pills">
+              <a class="pill" data-asset="mac-arm" hidden>Apple Silicon <span>.dmg</span></a>
+              <a class="pill pill-alt" data-asset="mac-x64" hidden>Intel <span>.dmg</span></a>
+            </div>
+          </div>
+          <div class="platform" data-platform="linux">
+            <h3>LINUX</h3>
+            <div class="platform-pills">
+              <a class="pill" data-asset="linux-appimage" hidden>AppImage <span>.AppImage</span></a>
+              <a class="pill pill-alt" data-asset="linux-deb" hidden>Debian/Ubuntu <span>.deb</span></a>
+              <a class="pill pill-alt" data-asset="linux-rpm" hidden>Fedora/RHEL <span>.rpm</span></a>
+            </div>
+          </div>
+        </div>
+        <p class="download-note">
+          <a href="https://github.com/retroverse-studios/astron/releases" target="_blank" rel="noopener">All releases on GitHub →</a>
+        </p>
+      </section>
+
+      <!-- Footer -->
+      <footer class="footer">
+        <p>ASTRON // Part of the <strong>Retroverse Studios</strong> collection</p>
+        <p>Entertainment and cultural exploration only. Not advice.</p>
+        <p style="margin-top: 8px">
+          <a href="https://github.com/retroverse-studios/astron">github.com/retroverse-studios/astron</a>
+          &nbsp;·&nbsp; AGPL-3.0 &nbsp;·&nbsp; Swiss Ephemeris © Astrodienst AG
+        </p>
+      </footer>
+    </div>
+
+    <script src="/src/downloads.js" type="module"></script>
+  </body>
+</html>

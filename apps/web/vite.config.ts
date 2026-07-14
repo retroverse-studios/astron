@@ -5,6 +5,11 @@ import { defineConfig } from "vite";
 // The Emscripten loader fetches swisseph.data/.wasm relative to the page,
 // so scripts/sync-wasm.mjs copies them into public/ before dev and build.
 export default defineConfig({
+  // Relative base so one build works both under /app/ on astron.retroverse.studio
+  // (the landing page owns the root) and inside the Tauri desktop shell, which
+  // serves this same dist from tauri://. The swisseph .data/.wasm fetches are
+  // page-relative already, so they survive the subpath too.
+  base: "./",
   plugins: [react(), tailwindcss()],
   // Emscripten resolves its .wasm/.data relative to the script URL; Vite's
   // dep pre-bundling would relocate the script and break those paths.

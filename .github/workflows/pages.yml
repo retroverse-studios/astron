@@ -1,0 +1,73 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # `...` builds @astron/web plus its workspace dependencies (core, atlas,
+      # charts, ephemeris-wasm, interpret) in topological order — the desktop
+      # and CLI apps are not needed for the site.
+      - name: Build web app and its packages
+        run: pnpm --filter '@astron/web...' build
+
+      - name: Build landing page
+        run: pnpm --filter @astron/landing build
+
+      # Landing page at the domain root, web app under /app/
+      # (the landing page's [OPEN IN BROWSER] button links to /app/).
+      - name: Assemble site
+        run: |
+          mkdir -p site/app
+          cp -r landing/dist/* site/
+          cp -r apps/web/dist/* site/app/
+          touch site/.nojekyll
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
