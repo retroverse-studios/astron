@@ -1,8 +1,11 @@
 name: Release
 
 # Builds desktop installers when a v* tag is pushed and attaches them to a
-# draft GitHub release. macOS bundles are code-signed with a Developer ID
-# certificate and notarized by Apple during bundling (Windows/Linux unsigned).
+# draft GitHub release, which the final job publishes once every platform's
+# assets are attached (so releases/latest never serves a half-built release —
+# the landing page's download buttons read it). macOS bundles are code-signed
+# with a Developer ID certificate and notarized by Apple during bundling
+# (Windows/Linux unsigned).
 on:
   push:
     tags: ["v*"]
@@ -67,3 +70,12 @@ jobs:
           releaseName: "ASTRON ${{ github.ref_name }}"
           releaseDraft: true
           args: ${{ matrix.args }}
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft=false
