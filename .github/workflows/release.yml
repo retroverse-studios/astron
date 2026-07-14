@@ -7,6 +7,10 @@ on:
   push:
     tags: ["v*"]
 
+# the default GITHUB_TOKEN is read-only; creating the draft release needs write
+permissions:
+  contents: write
+
 jobs:
   build:
     strategy:
