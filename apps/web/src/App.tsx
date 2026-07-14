@@ -29,8 +29,13 @@ import {
   DEFAULT_AI_MODEL,
   FLUENT_PROVENANCE,
   fluentPlacement,
+  mergeContent,
+  overridesNote,
   readChart,
+  VOICES,
 } from "@astron/interpret";
+import { LibraryTab } from "./components/LibraryTab";
+import { useContentOverrides, type OverridesApi } from "./lib/overrides-store";
 import { DateTime } from "luxon";
 import { useState } from "react";
 import { AspectTable, Notices, PlanetTable, WheelBox } from "./components/ChartView";
@@ -40,7 +45,7 @@ import { getProvider } from "./lib/astro";
 import { castNatal, castMoment, type ChartSettings, type PersonDraft } from "./lib/compute";
 import { useSavedPeople } from "./lib/people";
 
-const TABS = ["NATAL", "TRANSITS", "RETURNS", "PROGRESSED", "DASHAS", "RELATIONSHIP"] as const;
+const TABS = ["NATAL", "TRANSITS", "RETURNS", "PROGRESSED", "DASHAS", "RELATIONSHIP", "LIBRARY"] as const;
 type Tab = (typeof TABS)[number];
 
 const wheelTheme = { theme: { background: "none" as const } };
@@ -78,6 +83,7 @@ interface TabProps {
   settings: ChartSettings;
   scheme: "modern" | "traditional";
   peopleApi: ReturnType<typeof useSavedPeople>;
+  overridesApi: OverridesApi;
 }
 
 function PersonPanel({
@@ -124,14 +130,26 @@ const VARGAS: { value: Varga | ""; label: string }[] = [
 
 type ReadingMode = "parts" | "fluent" | "ai";
 
-function Reading({ chart, scheme }: { chart: Chart; scheme: "modern" | "traditional" }) {
+function Reading({
+  chart,
+  scheme,
+  overridesApi,
+}: {
+  chart: Chart;
+  scheme: "modern" | "traditional";
+  overridesApi: OverridesApi;
+}) {
   const [mode, setMode] = useState<ReadingMode>("parts");
   const [apiKey, setApiKey] = useState(() => localStorage.getItem("astron.aiKey") ?? "");
   const [model, setModel] = useState(DEFAULT_AI_MODEL);
+  const [voice, setVoice] = useState("");
+  const [customVoice, setCustomVoice] = useState("");
   const [aiText, setAiText] = useState<{ text: string; provenance: string }>();
   const [aiBusy, setAiBusy] = useState(false);
   const [aiError, setAiError] = useState<string>();
-  const reading = readChart(chart, scheme);
+  const content = mergeContent(overridesApi.overrides);
+  const personalised = overridesNote(overridesApi.overrides);
+  const reading = readChart(chart, scheme, { content });
   const Part = ({ k, v }: { k: string; v: string }) => (
     <p className="text-sm">
       <span className="inline-block w-24 text-crt-amber/80 text-xs tracking-widest uppercase">{k}</span>
@@ -165,10 +183,11 @@ function Reading({ chart, scheme }: { chart: Chart; scheme: "modern" | "traditio
               {p.house ? `, house ${p.house}` : ""}
             </h3>
             <p className="text-sm text-crt-text leading-relaxed">
-              {fluentPlacement(p.body, p.sign, p.house)}
+              {fluentPlacement(p.body, p.sign, p.house, content)}
             </p>
           </div>
         ))}
+        {personalised && <p className="text-xs text-crt-amber leading-relaxed">{personalised}</p>}
         <p className="text-xs text-crt-dim leading-relaxed border border-crt-line rounded p-3">
           {FLUENT_PROVENANCE}
         </p>
@@ -202,13 +221,34 @@ function Reading({ chart, scheme }: { chart: Chart; scheme: "modern" | "traditio
             className={input + " w-64"}
             title="model id"
           />
+        </div>
+        <div className="flex flex-wrap gap-2 items-center">
+          <label className="text-xs text-crt-dim tracking-widest">VOICE</label>
+          <select value={voice} onChange={(e) => setVoice(e.target.value)} className={input + " w-64"}>
+            <option value="">house style (default)</option>
+            {Object.entries(VOICES).map(([id, v]) => (
+              <option key={id} value={id}>
+                {v.label}
+              </option>
+            ))}
+            <option value="custom">✍️ custom…</option>
+          </select>
+          {voice === "custom" && (
+            <input
+              placeholder='e.g. "a weary lighthouse keeper"'
+              value={customVoice}
+              onChange={(e) => setCustomVoice(e.target.value)}
+              className={input + " flex-1 min-w-48"}
+            />
+          )}
           <button
             className={button}
             disabled={aiBusy || !apiKey}
             onClick={() => {
               setAiBusy(true);
               setAiError(undefined);
-              aiReading(chart, scheme, { apiKey, model })
+              const chosenVoice = voice === "custom" ? customVoice || undefined : voice || undefined;
+              aiReading(chart, scheme, { apiKey, model, voice: chosenVoice })
                 .then(setAiText)
                 .catch((e: unknown) => setAiError(e instanceof Error ? e.message : String(e)))
                 .finally(() => setAiBusy(false));
@@ -264,6 +304,7 @@ function Reading({ chart, scheme }: { chart: Chart; scheme: "modern" | "traditio
           <Part k="shadow" v={r.lenses.shadow} />
         </div>
       ))}
+      {personalised && <p className="text-xs text-crt-amber leading-relaxed">{personalised}</p>}
       <p className="text-xs text-crt-dim leading-relaxed border border-crt-line rounded p-3">
         {reading.disclaimer}
       </p>
@@ -271,7 +312,7 @@ function Reading({ chart, scheme }: { chart: Chart; scheme: "modern" | "traditio
   );
 }
 
-function NatalTab({ person, setPerson, settings, scheme, peopleApi }: TabProps) {
+function NatalTab({ person, setPerson, settings, scheme, peopleApi, overridesApi }: TabProps) {
   const cast = useCast<ReturnType<typeof castNatal>>();
   const [varga, setVarga] = useState<Varga | "">("");
   const [harmonic, setHarmonic] = useState("");
@@ -366,7 +407,9 @@ function NatalTab({ person, setPerson, settings, scheme, peopleApi }: TabProps) 
               </div>
             )}
             <AspectTable aspects={cast.result.chart.aspects} />
-            {showReading && <Reading chart={cast.result.chart} scheme={scheme} />}
+            {showReading && (
+              <Reading chart={cast.result.chart} scheme={scheme} overridesApi={overridesApi} />
+            )}
           </>
         ) : (
           <div className={panel + " p-16 text-center text-crt-dim"}>enter birth data and cast a chart</div>
@@ -811,13 +854,14 @@ export default function App() {
   const [sidereal, setSidereal] = useState(false);
   const [houses, setHouses] = useState<HouseSystem>("placidus");
   const peopleApi = useSavedPeople();
+  const overridesApi = useContentOverrides();
 
   const settings: ChartSettings = {
     zodiac: sidereal ? { type: "sidereal", ayanamsa: "lahiri" } : { type: "tropical" },
     houseSystem: houses,
   };
   const scheme = sidereal ? ("traditional" as const) : ("modern" as const);
-  const tabProps: TabProps = { person, setPerson, settings, scheme, peopleApi };
+  const tabProps: TabProps = { person, setPerson, settings, scheme, peopleApi, overridesApi };
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
@@ -879,6 +923,7 @@ export default function App() {
       {tab === "PROGRESSED" && <ProgressedTab {...tabProps} />}
       {tab === "DASHAS" && <DashasTab {...tabProps} />}
       {tab === "RELATIONSHIP" && <RelationshipTab {...tabProps} />}
+      {tab === "LIBRARY" && <LibraryTab api={overridesApi} />}
 
       <footer className="mt-10 text-xs text-crt-dim leading-relaxed max-w-3xl">
         <p>

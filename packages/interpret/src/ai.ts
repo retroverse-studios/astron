@@ -8,7 +8,67 @@ export interface AiOptions {
   model?: string;
   /** Optional extra instruction, e.g. "focus on career" or "shorter". */
   emphasis?: string;
+  /** A VOICES preset id, or free-text like "write as a weary lighthouse keeper". */
+  voice?: string;
 }
+
+/**
+ * Fun voice presets for the live-AI mode. A voice changes diction only —
+ * the honesty rules (light AND shadow, no predictions, "in this tradition")
+ * still bind, which is half the comedy.
+ */
+export const VOICES: Record<string, { label: string; instruction: string }> = {
+  pirate: {
+    label: "🏴‍☠️ Pirate captain",
+    instruction:
+      "a good-natured pirate captain — nautical metaphors, 'arr' and 'ye', the chart read as a treasure map, shadows as reefs to steer round",
+  },
+  bard: {
+    label: "🎭 Shakespearean player",
+    instruction:
+      "a Shakespearean player — thee and thou, theatrical asides, rich Elizabethan imagery, and end the reading with a rhyming couplet",
+  },
+  bubble: {
+    label: "✨ Bubblegum bestie",
+    instruction:
+      "a relentlessly bright, bubbly best friend — sparkle, superlatives, exclamation marks!! — who still names every shadow, just adorably",
+  },
+  professor: {
+    label: "📚 Emeritus professor",
+    instruction:
+      "a dry emeritus professor of comparative symbology — precise, faintly weary, with parenthetical asides and the occasional sigh at the state of the field",
+  },
+  politician: {
+    label: "🎤 Campaigning politician",
+    instruction:
+      "a campaigning politician — promises the strengths to every demographic, tries to pivot away from the shadows, and is nonetheless made to answer for each one",
+  },
+  noir: {
+    label: "🌧 Noir detective",
+    instruction:
+      "a hardboiled noir detective — rain on the window, the chart spread out like a case file, every placement a suspect with a motive",
+  },
+  grandma: {
+    label: "🍪 Loving grandmother",
+    instruction:
+      "a loving grandmother — tea and biscuits, gentle scolding for the shadows, unshakeable faith in the reader, everything ends with being fed",
+  },
+  sportscaster: {
+    label: "📣 Sports commentator",
+    instruction:
+      "a breathless play-by-play sports commentator — the chart called like a live match, placements as players, aspects as passages of play",
+  },
+  robot: {
+    label: "🤖 Extremely literal robot",
+    instruction:
+      "an extremely literal robot — deadpan compliance, numbered observations, accidental profundity, occasional reports on its own emotional subroutines",
+  },
+  dj: {
+    label: "📻 Late-night cosmic DJ",
+    instruction:
+      "a velvet-voiced late-night radio DJ — the sky as tonight's setlist, placements as dedications going out to the listener, slow-jam pacing",
+  },
+};
 
 export const DEFAULT_AI_MODEL = "claude-haiku-4-5-20251001";
 
@@ -34,7 +94,12 @@ export function buildReadingPrompt(
   chart: Chart,
   scheme: RulershipScheme,
   emphasis?: string,
+  voice?: string,
 ): { system: string; user: string } {
+  const voiceInstruction = voice ? (VOICES[voice]?.instruction ?? voice) : undefined;
+  const system = voiceInstruction
+    ? `${SYSTEM_PROMPT}\n\nVOICE OVERLAY: write in the voice of ${voiceInstruction}. The voice changes diction and imagery only — every honesty rule above still binds, in character.`
+    : SYSTEM_PROMPT;
   const reading = readChart(chart, scheme);
   const placements = reading.placements.map((r) => ({
     point: r.position.body,
@@ -57,7 +122,7 @@ export function buildReadingPrompt(
     lenses: r.lenses,
   }));
   return {
-    system: SYSTEM_PROMPT,
+    system,
     user:
       `Write the reading for this chart.${emphasis ? ` Emphasis requested by the reader: ${emphasis}.` : ""}\n\n` +
       JSON.stringify({ zodiac: chart.zodiac, placements, aspects }, null, 1),
@@ -74,7 +139,7 @@ export async function aiReading(
   options: AiOptions,
 ): Promise<{ text: string; provenance: string; model: string }> {
   const model = options.model ?? DEFAULT_AI_MODEL;
-  const prompt = buildReadingPrompt(chart, scheme, options.emphasis);
+  const prompt = buildReadingPrompt(chart, scheme, options.emphasis, options.voice);
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {

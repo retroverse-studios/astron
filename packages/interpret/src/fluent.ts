@@ -227,11 +227,20 @@ export const FLUENT_PLACEMENTS: Record<Body, SignSet> = {
   meanLilith: LILITH,
 };
 
-/** The fluent paragraph for a placement, with the house clause appended. */
-export function fluentPlacement(body: Body, sign: Sign, house?: number): string {
-  const base = FLUENT_PLACEMENTS[body][sign];
+/**
+ * The fluent paragraph for a placement, with the house clause appended.
+ * Pass a merged ContentSet-shaped source to use personalised text.
+ */
+export function fluentPlacement(
+  body: Body,
+  sign: Sign,
+  house?: number,
+  source?: { fluentPlacements: Record<Body, Record<Sign, string>>; houseDomains: string[] },
+): string {
+  const base = (source?.fluentPlacements ?? FLUENT_PLACEMENTS)[body][sign];
+  const domains = source?.houseDomains ?? HOUSE_DOMAINS;
   return house
-    ? `${base} In this chart it plays out in the ${ordinal(house)} house — ${HOUSE_DOMAINS[house - 1]}.`
+    ? `${base} In this chart it plays out in the ${ordinal(house)} house — ${domains[house - 1]}.`
     : base;
 }
 

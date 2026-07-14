@@ -185,7 +185,25 @@ of a circular signed function, wrap-guarded, refined by bisection to ~1s.
       sent; the system prompt enforces the house style (light AND shadow,
       "in this tradition", no predictions).
 
-### Remaining (7e)
+### Phase 7e ✅ (the Text Library + voices)
+
+- [x] Every reading passage is user-editable. Shipped text stays immutable;
+      edits live as a sparse ContentOverrides diff (localStorage in
+      web/desktop), so restore-shipped = delete the key, per passage or all.
+      Export/import as JSON (parseOverrides validates and strips unknown
+      keys). Personalised readings carry an overridesNote wherever rendered.
+      Web: LIBRARY tab (sections: planets/signs/houses/aspects/dignities/
+      fluent; amber markers, per-field restore, export/import/restore-all).
+      CLI: --content <file.json>.
+- [x] AI voice presets for BYOK mode: pirate, Shakespearean player,
+      bubblegum bestie, emeritus professor, campaigning politician, noir
+      detective, loving grandmother, sports commentator, literal robot,
+      late-night cosmic DJ — plus free-text custom voices. A voice changes
+      diction only; the system prompt keeps every honesty rule binding, in
+      character. ("Pidgin" was deliberately not included: Pidgin/Tok Pisin
+      are real languages, not costumes.) CLI --ai-voice; web voice selector.
+
+### Remaining (7f)
 
 - Electional/rectification UI in the web app; report button in the web app;
   code-signing for installers (needs certificates); readings for

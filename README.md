@@ -51,6 +51,12 @@ Phase 1 in progress. Working today:
   points and angles (`--stars`)
 - **Printable reports**: `--report chart.html` writes a self-contained
   ink-on-paper report — print to PDF from any browser
+- **The Text Library**: every passage ASTRON uses is editable in-app — personalise
+  any reading text, see it marked as yours, restore the shipped wording per
+  passage or wholesale, export/import your set as JSON (`--content` in the CLI)
+- **AI voices**: the BYOK mode takes fun voice presets — pirate captain,
+  Shakespearean player, noir detective, literal robot, loving grandmother and
+  more, or any custom voice — with the honesty rules still binding, in character
 - **Fully offline**: web app and desktop app compute everything locally —
   ephemeris, atlas and engine ship in the bundle; birth data never leaves
   your machine

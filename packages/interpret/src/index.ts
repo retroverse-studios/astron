@@ -5,18 +5,12 @@ import {
   type Chart,
   type RulershipScheme,
 } from "@astron/core";
-import {
-  ASPECT_LENSES,
-  DIGNITY_NOTES,
-  HOUSE_DOMAINS,
-  INTERPRETATION_DISCLAIMER,
-  PLANET_ARCHETYPES,
-  SIGN_LENSES,
-  type Lensed,
-} from "./content.js";
+import { INTERPRETATION_DISCLAIMER, type Lensed } from "./content.js";
+import { SHIPPED_CONTENT, type ContentSet } from "./overrides.js";
 
 export * from "./content.js";
 export * from "./fluent.js";
+export * from "./overrides.js";
 export * from "./ai.js";
 
 export interface PlacementReading {
@@ -47,42 +41,48 @@ export interface ChartReading {
 export function readPlacement(
   position: BodyPosition,
   scheme: RulershipScheme = "modern",
+  content: ContentSet = SHIPPED_CONTENT,
 ): PlacementReading {
   return {
     position,
-    archetype: PLANET_ARCHETYPES[position.body],
-    sign: SIGN_LENSES[position.sign],
-    house: position.house ? HOUSE_DOMAINS[position.house - 1] : undefined,
+    archetype: content.planetArchetypes[position.body],
+    sign: content.signLenses[position.sign],
+    house: position.house ? content.houseDomains[position.house - 1] : undefined,
     dignityNotes: dignities(position.body, position.sign, scheme).map(
-      (d) => DIGNITY_NOTES[d],
+      (d) => content.dignityNotes[d],
     ),
   };
 }
 
 const firstClause = (s: string): string => s.split(" — ")[0]!;
 
-export function readAspect(aspect: Aspect): AspectReading {
+export function readAspect(
+  aspect: Aspect,
+  content: ContentSet = SHIPPED_CONTENT,
+): AspectReading {
   return {
     aspect,
-    pairing: `${firstClause(PLANET_ARCHETYPES[aspect.a])} ${aspect.name === "opposition" ? "faces" : "meets"} ${firstClause(PLANET_ARCHETYPES[aspect.b])}`,
-    lenses: ASPECT_LENSES[aspect.name],
+    pairing: `${firstClause(content.planetArchetypes[aspect.a])} ${aspect.name === "opposition" ? "faces" : "meets"} ${firstClause(content.planetArchetypes[aspect.b])}`,
+    lenses: content.aspectLenses[aspect.name],
   };
 }
 
 /**
  * A whole-chart reading: every placement and (by default only the tighter)
  * aspects, assembled from labelled parts. The disclaimer is part of the
- * reading, not an optional extra — renderers must show it.
+ * reading, not an optional extra — renderers must show it. Pass a merged
+ * ContentSet to read with the user's personalised text.
  */
 export function readChart(
   chart: Chart,
   scheme: RulershipScheme = "modern",
-  options: { maxAspectOrb?: number } = {},
+  options: { maxAspectOrb?: number; content?: ContentSet } = {},
 ): ChartReading {
   const maxOrb = options.maxAspectOrb ?? 4;
+  const content = options.content ?? SHIPPED_CONTENT;
   return {
-    placements: chart.positions.map((p) => readPlacement(p, scheme)),
-    aspects: chart.aspects.filter((a) => a.orb <= maxOrb).map(readAspect),
+    placements: chart.positions.map((p) => readPlacement(p, scheme, content)),
+    aspects: chart.aspects.filter((a) => a.orb <= maxOrb).map((a) => readAspect(a, content)),
     disclaimer: INTERPRETATION_DISCLAIMER,
   };
 }

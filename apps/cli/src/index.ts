@@ -60,13 +60,17 @@ import {
   FLUENT_PROVENANCE,
   fluentPlacement,
   INTERPRETATION_DISCLAIMER,
+  mergeContent,
+  overridesNote,
+  parseOverrides,
   readChart,
+  type ContentSet,
 } from "@astron/interpret";
 import { LIGHT_THEME, renderBouquet, renderWheel } from "@astron/charts";
 import { renderReport } from "./report.js";
 import { Command } from "commander";
 import { DateTime } from "luxon";
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 
 const BODY_GLYPHS: Record<Body, string> = {
   sun: "☉",
@@ -120,8 +124,16 @@ interface CommonOpts {
   light?: boolean;
   read?: boolean | string;
   aiModel?: string;
+  aiVoice?: string;
+  content?: string;
   stars?: boolean;
   report?: string;
+}
+
+function loadContent(opts: CommonOpts): { content?: ContentSet; note?: string } {
+  if (!opts.content) return {};
+  const overrides = parseOverrides(readFileSync(opts.content, "utf8"));
+  return { content: mergeContent(overrides), note: overridesNote(overrides) };
 }
 
 type ReadMode = "parts" | "fluent" | "ai";
@@ -135,11 +147,11 @@ function readMode(opts: CommonOpts): ReadMode | undefined {
   return mode;
 }
 
-function printFluentReading(chart: Chart): void {
+function printFluentReading(chart: Chart, content?: ContentSet): void {
   console.log("\n  THE READING (built-in fluent set)");
   for (const p of chart.positions) {
     console.log(`\n  ${BODY_GLYPHS[p.body]} ${BODY_NAMES[p.body]} in ${p.sign}${p.house ? `, house ${p.house}` : ""}`);
-    console.log(`  ${fluentPlacement(p.body, p.sign, p.house)}`);
+    console.log(`  ${fluentPlacement(p.body, p.sign, p.house, content)}`);
   }
   console.log(`\n  ${FLUENT_PROVENANCE}`);
   console.log(`\n  ${INTERPRETATION_DISCLAIMER}`);
@@ -149,14 +161,14 @@ async function printAiReading(chart: Chart, scheme: RulershipScheme, opts: Commo
   const apiKey = process.env["ANTHROPIC_API_KEY"];
   if (!apiKey) fail("--read ai needs ANTHROPIC_API_KEY in the environment (your own key; ASTRON has no server)");
   console.log("\n  (calling Anthropic with your key — this is the one mode where chart data leaves your machine)");
-  const result = await aiReading(chart, scheme, { apiKey, model: opts.aiModel });
+  const result = await aiReading(chart, scheme, { apiKey, model: opts.aiModel, voice: opts.aiVoice });
   console.log(`\n  THE READING (AI, live)\n`);
   console.log(result.text.split("\n").map((l) => `  ${l}`).join("\n"));
   console.log(`\n  ${result.provenance}`);
 }
 
-function printReading(chart: Chart, scheme: RulershipScheme): void {
-  const reading = readChart(chart, scheme);
+function printReading(chart: Chart, scheme: RulershipScheme, content?: ContentSet): void {
+  const reading = readChart(chart, scheme, { content });
   console.log("\n  THE READING, IN PARTS");
   for (const r of reading.placements) {
     const where = `${r.position.sign}${r.position.house ? `, house ${r.position.house}` : ""}`;
@@ -472,6 +484,8 @@ function addCommonOptions(cmd: Command): Command {
       "interpretation: parts (labelled, no AI) | fluent (built-in AI-written set) | ai (live via your ANTHROPIC_API_KEY)",
     )
     .option("--ai-model <model>", `model for --read ai (default ${DEFAULT_AI_MODEL})`)
+    .option("--ai-voice <voice>", "voice for --read ai: pirate|bard|bubble|professor|politician|noir|grandma|sportscaster|robot|dj, or free text")
+    .option("--content <path>", "personalised text overrides (JSON exported from the app's Library tab)")
     .option("--stars", "list fixed-star conjunctions (royal + bright stars, 1° orb)")
     .option("--report <path>", "write a printable HTML report (print to PDF from a browser)")
     .option("--json", "machine-readable JSON output");
@@ -541,8 +555,10 @@ addCommonOptions(
   } else {
     printChart(chart, moment, opts);
     if (opts.stars) printStars(chart, provider);
-    if (mode === "parts") printReading(chart, scheme);
-    if (mode === "fluent") printFluentReading(chart);
+    const loaded = mode ? loadContent(opts) : {};
+    if (loaded.note) console.log(`\n  (${loaded.note})`);
+    if (mode === "parts") printReading(chart, scheme, loaded.content);
+    if (mode === "fluent") printFluentReading(chart, loaded.content);
     if (mode === "ai") await printAiReading(chart, scheme, opts);
   }
 });
