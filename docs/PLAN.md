@@ -171,11 +171,25 @@ of a circular signed function, wrap-guarded, refined by bisection to ~1s.
       contacts, all disclaimers) that prints cleanly to PDF from any
       browser.
 
-### Remaining (7d)
+### Phase 7d ✅ (three-tier interpretations)
+
+- [x] Three reading modes, each labelled with its provenance:
+      **parts** (deterministic, no AI), **fluent** (156 planet-in-sign
+      paragraphs written once by Claude during development, shipped static,
+      FLUENT_PROVENANCE always displayed), and **ai** (BYOK: the user's own
+      Anthropic key, direct browser/CLI → Anthropic, no ASTRON server; the
+      UI states explicitly that this is the only mode where chart data
+      leaves the machine). CLI `--read [parts|fluent|ai]` + `--ai-model`;
+      web reading panel mode selector with key stored in localStorage.
+      buildReadingPrompt is exported so users can inspect exactly what is
+      sent; the system prompt enforces the house style (light AND shadow,
+      "in this tradition", no predictions).
+
+### Remaining (7e)
 
 - Electional/rectification UI in the web app; report button in the web app;
   code-signing for installers (needs certificates); readings for
-  returns/progressions/synastry contexts
+  returns/progressions/synastry contexts; fluent set entries for aspects
 
 ## Known constraints
 

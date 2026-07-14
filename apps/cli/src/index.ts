@@ -54,7 +54,14 @@ import {
 } from "@astron/core";
 import { SwephProvider } from "@astron/core/sweph";
 import { fixedStarContacts } from "@astron/core";
-import { readChart } from "@astron/interpret";
+import {
+  aiReading,
+  DEFAULT_AI_MODEL,
+  FLUENT_PROVENANCE,
+  fluentPlacement,
+  INTERPRETATION_DISCLAIMER,
+  readChart,
+} from "@astron/interpret";
 import { LIGHT_THEME, renderBouquet, renderWheel } from "@astron/charts";
 import { renderReport } from "./report.js";
 import { Command } from "commander";
@@ -111,9 +118,41 @@ interface CommonOpts {
   julian?: boolean;
   svg?: string;
   light?: boolean;
-  read?: boolean;
+  read?: boolean | string;
+  aiModel?: string;
   stars?: boolean;
   report?: string;
+}
+
+type ReadMode = "parts" | "fluent" | "ai";
+
+function readMode(opts: CommonOpts): ReadMode | undefined {
+  if (!opts.read) return undefined;
+  const mode = opts.read === true ? "parts" : opts.read;
+  if (mode !== "parts" && mode !== "fluent" && mode !== "ai") {
+    fail(`--read mode must be parts, fluent or ai (got "${mode}")`);
+  }
+  return mode;
+}
+
+function printFluentReading(chart: Chart): void {
+  console.log("\n  THE READING (built-in fluent set)");
+  for (const p of chart.positions) {
+    console.log(`\n  ${BODY_GLYPHS[p.body]} ${BODY_NAMES[p.body]} in ${p.sign}${p.house ? `, house ${p.house}` : ""}`);
+    console.log(`  ${fluentPlacement(p.body, p.sign, p.house)}`);
+  }
+  console.log(`\n  ${FLUENT_PROVENANCE}`);
+  console.log(`\n  ${INTERPRETATION_DISCLAIMER}`);
+}
+
+async function printAiReading(chart: Chart, scheme: RulershipScheme, opts: CommonOpts): Promise<void> {
+  const apiKey = process.env["ANTHROPIC_API_KEY"];
+  if (!apiKey) fail("--read ai needs ANTHROPIC_API_KEY in the environment (your own key; ASTRON has no server)");
+  console.log("\n  (calling Anthropic with your key — this is the one mode where chart data leaves your machine)");
+  const result = await aiReading(chart, scheme, { apiKey, model: opts.aiModel });
+  console.log(`\n  THE READING (AI, live)\n`);
+  console.log(result.text.split("\n").map((l) => `  ${l}`).join("\n"));
+  console.log(`\n  ${result.provenance}`);
 }
 
 function printReading(chart: Chart, scheme: RulershipScheme): void {
@@ -428,7 +467,11 @@ function addCommonOptions(cmd: Command): Command {
     .option("--julian", "date is in the Julian calendar (implies Local Mean Time)")
     .option("--svg <path>", "write a chart wheel SVG to this file")
     .option("--light", "use the ink-on-paper wheel theme (with --svg)")
-    .option("--read", "print the interpretation — assembled from labelled parts")
+    .option(
+      "--read [mode]",
+      "interpretation: parts (labelled, no AI) | fluent (built-in AI-written set) | ai (live via your ANTHROPIC_API_KEY)",
+    )
+    .option("--ai-model <model>", `model for --read ai (default ${DEFAULT_AI_MODEL})`)
     .option("--stars", "list fixed-star conjunctions (royal + bright stars, 1° orb)")
     .option("--report <path>", "write a printable HTML report (print to PDF from a browser)")
     .option("--json", "machine-readable JSON output");
@@ -444,11 +487,12 @@ addCommonOptions(
     .command("natal")
     .description("cast a natal (or any event) chart")
     .requiredOption("-d, --date <YYYY-MM-DD>", "local date of birth/event"),
-).action((opts: CommonOpts & { date: string }) => {
+).action(async (opts: CommonOpts & { date: string }) => {
   const provider = new SwephProvider();
   const moment = resolveMoment(opts.date, opts);
   const chart = computeChart(buildInput(moment, opts), provider);
   const scheme = schemeFor(chart);
+  const mode = readMode(opts);
   maybeWriteSvg(opts, () => renderWheel(chart, wheelTheme(opts)));
   if (opts.report) {
     writeFileSync(
@@ -466,11 +510,28 @@ addCommonOptions(
     if (!opts.json) console.log(`(report written to ${opts.report} — print to PDF from a browser)\n`);
   }
   if (opts.json) {
+    const reading =
+      mode === "parts"
+        ? readChart(chart, scheme)
+        : mode === "fluent"
+          ? {
+              paragraphs: chart.positions.map((p) => ({
+                body: p.body,
+                text: fluentPlacement(p.body, p.sign, p.house),
+              })),
+              provenance: FLUENT_PROVENANCE,
+            }
+          : mode === "ai"
+            ? await aiReading(chart, scheme, {
+                apiKey: process.env["ANTHROPIC_API_KEY"] ?? fail("ANTHROPIC_API_KEY required for --read ai"),
+                model: opts.aiModel,
+              })
+            : undefined;
     console.log(
       JSON.stringify(
         {
           ...chartToJson(chart, opts, moment),
-          ...(opts.read ? { reading: readChart(chart, scheme) } : {}),
+          ...(reading ? { reading, readingMode: mode } : {}),
           ...(opts.stars ? { starContacts: fixedStarContacts(provider, chart) } : {}),
         },
         null,
@@ -480,7 +541,9 @@ addCommonOptions(
   } else {
     printChart(chart, moment, opts);
     if (opts.stars) printStars(chart, provider);
-    if (opts.read) printReading(chart, scheme);
+    if (mode === "parts") printReading(chart, scheme);
+    if (mode === "fluent") printFluentReading(chart);
+    if (mode === "ai") await printAiReading(chart, scheme, opts);
   }
 });
 

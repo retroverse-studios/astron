@@ -16,6 +16,8 @@ import {
 } from "./content.js";
 
 export * from "./content.js";
+export * from "./fluent.js";
+export * from "./ai.js";
 
 export interface PlacementReading {
   position: BodyPosition;

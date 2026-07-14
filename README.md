@@ -38,10 +38,15 @@ Phase 1 in progress. Working today:
 - **Rectification**: `astron rectify --between 06:00-12:00 --events ...` ranks
   candidate birth times against dated life events — clearly labelled as the
   best-guess technique it is
-- **Interpretations, honestly assembled**: readings built from named parts —
-  planet archetype, sign through LIGHT/TRUTH/SHADOW lenses, house domain,
-  dignity notes — with the parts always shown (`--read`, or the toggle in the
-  app). No counterfeit fluent paragraphs.
+- **Interpretations at three honesty-labelled tiers** (`--read [mode]`, or the
+  selector in the app): **parts** — assembled from named pieces (planet
+  archetype, sign through LIGHT/TRUTH/SHADOW lenses, house domain, dignities),
+  no AI, deterministic; **fluent** — a built-in set of paragraphs written once
+  by AI (Claude) during development, disclosed as such, works offline;
+  **ai** — bring your own Anthropic key for a live, per-chart reading (the one
+  mode where chart data leaves your machine, and the UI says so). The exact
+  prompt is inspectable; the house style — light and shadow, tradition not
+  prediction — is enforced in it.
 - **Fixed stars**: the sixteen classical bright stars, conjunction contacts to
   points and angles (`--stars`)
 - **Printable reports**: `--report chart.html` writes a self-contained

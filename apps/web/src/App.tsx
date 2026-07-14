@@ -24,7 +24,13 @@ import {
   type TransitHit,
   type Varga,
 } from "@astron/core";
-import { readChart } from "@astron/interpret";
+import {
+  aiReading,
+  DEFAULT_AI_MODEL,
+  FLUENT_PROVENANCE,
+  fluentPlacement,
+  readChart,
+} from "@astron/interpret";
 import { DateTime } from "luxon";
 import { useState } from "react";
 import { AspectTable, Notices, PlanetTable, WheelBox } from "./components/ChartView";
@@ -116,7 +122,15 @@ const VARGAS: { value: Varga | ""; label: string }[] = [
   { value: "d60", label: "D60 shashtiamsa" },
 ];
 
+type ReadingMode = "parts" | "fluent" | "ai";
+
 function Reading({ chart, scheme }: { chart: Chart; scheme: "modern" | "traditional" }) {
+  const [mode, setMode] = useState<ReadingMode>("parts");
+  const [apiKey, setApiKey] = useState(() => localStorage.getItem("astron.aiKey") ?? "");
+  const [model, setModel] = useState(DEFAULT_AI_MODEL);
+  const [aiText, setAiText] = useState<{ text: string; provenance: string }>();
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiError, setAiError] = useState<string>();
   const reading = readChart(chart, scheme);
   const Part = ({ k, v }: { k: string; v: string }) => (
     <p className="text-sm">
@@ -124,9 +138,103 @@ function Reading({ chart, scheme }: { chart: Chart; scheme: "modern" | "traditio
       <span className="text-crt-text">{v}</span>
     </p>
   );
+
+  const modeBar = (
+    <div className="flex flex-wrap items-center gap-3">
+      <h2 className="text-crt-dim text-xs tracking-widest">THE READING</h2>
+      <select
+        value={mode}
+        onChange={(e) => setMode(e.target.value as ReadingMode)}
+        className="bg-crt-bg border border-crt-line rounded px-2 py-1 text-xs text-crt-text"
+      >
+        <option value="parts">in parts — no AI, fully deterministic</option>
+        <option value="fluent">fluent — built-in set, AI-written once</option>
+        <option value="ai">AI live — your own key (data leaves this machine)</option>
+      </select>
+    </div>
+  );
+
+  if (mode === "fluent") {
+    return (
+      <div className={panel + " p-4 space-y-4"}>
+        {modeBar}
+        {chart.positions.map((p) => (
+          <div key={p.body} className="border-t border-crt-line/40 pt-2">
+            <h3 className="text-crt-bright mb-1">
+              {GLYPHS[p.body]} {BODY_NAMES[p.body]} in {p.sign}
+              {p.house ? `, house ${p.house}` : ""}
+            </h3>
+            <p className="text-sm text-crt-text leading-relaxed">
+              {fluentPlacement(p.body, p.sign, p.house)}
+            </p>
+          </div>
+        ))}
+        <p className="text-xs text-crt-dim leading-relaxed border border-crt-line rounded p-3">
+          {FLUENT_PROVENANCE}
+        </p>
+      </div>
+    );
+  }
+
+  if (mode === "ai") {
+    return (
+      <div className={panel + " p-4 space-y-4"}>
+        {modeBar}
+        <p className="text-xs text-crt-amber leading-relaxed">
+          This mode sends your chart data directly to Anthropic using your own API key —
+          the only ASTRON feature that touches the network. The key is kept in this
+          browser's local storage and goes nowhere else.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <input
+            type="password"
+            placeholder="sk-ant-… (your Anthropic API key)"
+            value={apiKey}
+            onChange={(e) => {
+              setApiKey(e.target.value);
+              localStorage.setItem("astron.aiKey", e.target.value);
+            }}
+            className={input + " flex-1 min-w-56"}
+          />
+          <input
+            value={model}
+            onChange={(e) => setModel(e.target.value)}
+            className={input + " w-64"}
+            title="model id"
+          />
+          <button
+            className={button}
+            disabled={aiBusy || !apiKey}
+            onClick={() => {
+              setAiBusy(true);
+              setAiError(undefined);
+              aiReading(chart, scheme, { apiKey, model })
+                .then(setAiText)
+                .catch((e: unknown) => setAiError(e instanceof Error ? e.message : String(e)))
+                .finally(() => setAiBusy(false));
+            }}
+          >
+            {aiBusy ? "generating…" : aiText ? "REGENERATE" : "GENERATE"}
+          </button>
+        </div>
+        {aiError && <p className="text-red-400 text-sm">{aiError}</p>}
+        {aiText && (
+          <>
+            <div className="text-sm text-crt-text leading-relaxed whitespace-pre-wrap border-t border-crt-line/40 pt-3">
+              {aiText.text}
+            </div>
+            <p className="text-xs text-crt-dim leading-relaxed border border-crt-line rounded p-3">
+              {aiText.provenance}
+            </p>
+          </>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className={panel + " p-4 space-y-4"}>
-      <h2 className="text-crt-dim text-xs tracking-widest">THE READING, IN PARTS</h2>
+      {modeBar}
       {reading.placements.map((r) => (
         <div key={r.position.body} className="border-t border-crt-line/40 pt-2">
           <h3 className="text-crt-bright mb-1">

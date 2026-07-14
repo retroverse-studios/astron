@@ -30,6 +30,40 @@ describe("content completeness", () => {
   });
 });
 
+describe("fluent set", () => {
+  it("covers every body in every sign, non-trivially and distinctly", async () => {
+    const { FLUENT_PLACEMENTS, fluentPlacement, FLUENT_PROVENANCE } = await import("../src/fluent.js");
+    const seen = new Set<string>();
+    for (const [body, signs] of Object.entries(FLUENT_PLACEMENTS)) {
+      for (const sign of SIGNS) {
+        const text = signs[sign];
+        expect(text.length, `${body} in ${sign}`).toBeGreaterThan(60);
+        if (body !== "meanNode") seen.add(text); // meanNode aliases trueNode
+      }
+    }
+    expect(seen.size).toBe(13 * 12); // every non-alias entry unique
+    expect(fluentPlacement("sun", "Pisces", 10)).toContain("10th house");
+    expect(FLUENT_PROVENANCE).toMatch(/written once by an AI/);
+  });
+});
+
+describe("ai prompt", () => {
+  it("builds a prompt that enforces the house style and exposes the data", async () => {
+    const { buildReadingPrompt, aiProvenance } = await import("../src/ai.js");
+    const provider = new SwephProvider();
+    const chart = computeChart(
+      { utc: new Date(Date.UTC(1990, 5, 15, 4, 30)), location: { latitude: 28.61, longitude: 77.2 } },
+      provider,
+    );
+    const prompt = buildReadingPrompt(chart, "modern", "career");
+    expect(prompt.system).toMatch(/not a predictive science/);
+    expect(prompt.system).toMatch(/light AND shadow/);
+    expect(prompt.user).toContain("career");
+    expect(prompt.user).toContain("fluentDraft");
+    expect(aiProvenance("claude-x")).toMatch(/chart data leaves/);
+  });
+});
+
 describe("reading assembly", () => {
   const provider = new SwephProvider();
   const chart = computeChart(
