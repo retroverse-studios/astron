@@ -30,9 +30,12 @@ import {
   FLUENT_PROVENANCE,
   fluentPlacement,
   mergeContent,
+  NARRATORS,
+  narratorNote,
   overridesNote,
   readChart,
   VOICES,
+  type NarratorId,
 } from "@astron/interpret";
 import { LibraryTab } from "./components/LibraryTab";
 import { useContentOverrides, type OverridesApi } from "./lib/overrides-store";
@@ -147,8 +150,16 @@ function Reading({
   const [aiText, setAiText] = useState<{ text: string; provenance: string }>();
   const [aiBusy, setAiBusy] = useState(false);
   const [aiError, setAiError] = useState<string>();
-  const content = mergeContent(overridesApi.overrides);
-  const personalised = overridesNote(overridesApi.overrides);
+  const [narrator, setNarrator] = useState<NarratorId>(() => {
+    const stored = localStorage.getItem("astron.narrator") as NarratorId | null;
+    return stored && stored in NARRATORS ? stored : "plain";
+  });
+  // Narrator sets are complete alternative wordings; the user's personalised
+  // passages are edits to the plain text, so they only apply there.
+  const content =
+    narrator === "plain" ? mergeContent(overridesApi.overrides) : NARRATORS[narrator].content;
+  const personalised =
+    narrator === "plain" ? overridesNote(overridesApi.overrides) : narratorNote(narrator);
   const reading = readChart(chart, scheme, { content });
   const Part = ({ k, v }: { k: string; v: string }) => (
     <p className="text-sm">
@@ -169,6 +180,26 @@ function Reading({
         <option value="fluent">fluent — built-in set, AI-written once</option>
         <option value="ai">AI live — your own key (data leaves this machine)</option>
       </select>
+      {mode !== "ai" && (
+        <>
+          <label className="text-crt-dim text-xs tracking-widest">NARRATOR</label>
+          <select
+            value={narrator}
+            onChange={(e) => {
+              const id = e.target.value as NarratorId;
+              setNarrator(id);
+              localStorage.setItem("astron.narrator", id);
+            }}
+            className="bg-crt-bg border border-crt-line rounded px-2 py-1 text-xs text-crt-text"
+          >
+            {Object.entries(NARRATORS).map(([id, n]) => (
+              <option key={id} value={id}>
+                {n.label}
+              </option>
+            ))}
+          </select>
+        </>
+      )}
     </div>
   );
 
@@ -848,6 +879,41 @@ function RelationshipTab({ person, setPerson, settings, scheme, peopleApi }: Tab
   );
 }
 
+function DisclaimerGate() {
+  const [acked, setAcked] = useState(() => localStorage.getItem("astron.disclaimerAck") === "true");
+  if (acked) return null;
+  return (
+    <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Before we begin"
+        className="max-w-lg w-full border border-crt-line rounded bg-crt-bg p-6 space-y-3"
+      >
+        <h2 className="text-crt-bright tracking-[0.2em]">✷ ASTRON // BEFORE WE BEGIN</h2>
+        <p className="text-sm text-crt-text leading-relaxed">
+          The astronomy here is real — the Swiss Ephemeris, to arcsecond precision. The meanings
+          attached to it belong to a symbolic tradition, not to predictive science.
+        </p>
+        <p className="text-sm text-crt-text leading-relaxed">
+          No predictions. No medical, financial or legal advice. The sky supplies symbols, not
+          verdicts — entertainment and cultural exploration only.
+        </p>
+        <p className="text-sm text-crt-dim">Do you understand?</p>
+        <button
+          className={button}
+          onClick={() => {
+            localStorage.setItem("astron.disclaimerAck", "true");
+            setAcked(true);
+          }}
+        >
+          [ ACKNOWLEDGED ]
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [tab, setTab] = useState<Tab>("NATAL");
   const [person, setPerson] = useState<PersonDraft>({ date: "1990-06-15", time: "10:00" });
@@ -865,6 +931,7 @@ export default function App() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
+      <DisclaimerGate />
       <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl tracking-[0.3em] text-crt-bright">✷ ASTRON</h1>

@@ -12,6 +12,7 @@ export * from "./content.js";
 export * from "./fluent.js";
 export * from "./overrides.js";
 export * from "./ai.js";
+export * from "./narrators/index.js";
 
 export interface PlacementReading {
   position: BodyPosition;
