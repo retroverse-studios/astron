@@ -38,6 +38,14 @@ Phase 1 in progress. Working today:
 - **Rectification**: `astron rectify --between 06:00-12:00 --events ...` ranks
   candidate birth times against dated life events — clearly labelled as the
   best-guess technique it is
+- **Interpretations, honestly assembled**: readings built from named parts —
+  planet archetype, sign through LIGHT/TRUTH/SHADOW lenses, house domain,
+  dignity notes — with the parts always shown (`--read`, or the toggle in the
+  app). No counterfeit fluent paragraphs.
+- **Fixed stars**: the sixteen classical bright stars, conjunction contacts to
+  points and angles (`--stars`)
+- **Printable reports**: `--report chart.html` writes a self-contained
+  ink-on-paper report — print to PDF from any browser
 - **Fully offline**: web app and desktop app compute everything locally —
   ephemeris, atlas and engine ship in the bundle; birth data never leaves
   your machine

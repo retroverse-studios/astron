@@ -153,11 +153,29 @@ of a circular signed function, wrap-guarded, refined by bisection to ~1s.
 - [x] Web app: VARGA + HARMONIC panels on the natal tab, DASHAS tab
       (mahadashas + antardashas, running periods marked, always sidereal).
 
-### Remaining (7c)
+### Phase 7c ✅ (interpretation, stars, reports)
 
-- Fixed stars; interpretation text (LIGHT/TRUTH/SHADOW — biggest content
-  effort); PDF reports; electional/rectification UI in the web app;
-  code-signing for installers
+- [x] `@astron/interpret`: the LIGHT/TRUTH/SHADOW layer. Readings are
+      assembled from named parts — planet archetype, sign through three
+      lenses, house domain, dignity note, aspect lenses — and the parts are
+      always shown (honest assembly over counterfeit fluency; the NUMERON
+      principle). INTERPRETATION_DISCLAIMER is part of every reading.
+      CLI `--read`, web natal tab "show the reading" toggle.
+- [x] Fixed stars: sefstars.txt bundled, optional provider capability
+      (native only — WASM lacks the catalog), 16 classical bright stars,
+      conjunction-only contacts to points and angles. CLI `--stars`.
+      Validated: Regulus at 29°50′ Leo (J2000); Einstein gets his
+      documented Algol–Pluto and Sirius–ASC contacts.
+- [x] Printable reports: CLI `--report out.html` — self-contained
+      ink-on-paper HTML (light wheel, tables, the reading in parts, star
+      contacts, all disclaimers) that prints cleanly to PDF from any
+      browser.
+
+### Remaining (7d)
+
+- Electional/rectification UI in the web app; report button in the web app;
+  code-signing for installers (needs certificates); readings for
+  returns/progressions/synastry contexts
 
 ## Known constraints
 

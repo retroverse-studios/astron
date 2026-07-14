@@ -17,6 +17,7 @@
     "@astron/atlas": "workspace:^",
     "@astron/charts": "workspace:^",
     "@astron/core": "workspace:*",
+    "@astron/interpret": "workspace:^",
     "commander": "^12.1.0",
     "luxon": "^3.5.0"
   },

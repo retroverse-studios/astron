@@ -126,6 +126,24 @@ describe("vimshottari dashas", () => {
   });
 });
 
+describe("fixed stars", () => {
+  it("places Regulus at its documented J2000 longitude", () => {
+    const star = provider.fixedStar!(2451545.0, "Regulus", { type: "tropical" });
+    expect(star.longitude).toBeCloseTo(149.83, 1); // 29°50′ Leo
+    expect(star.name).toBe("Regulus");
+  });
+
+  it("finds star contacts to chart points within orb", async () => {
+    const { fixedStarContacts } = await import("../src/stars.js");
+    // Sun conjunct Regulus: Sun reaches ~29°50′ Leo around 22–23 August.
+    const chart = computeChart({ utc: new Date(Date.UTC(2000, 7, 22, 12)) }, provider);
+    const contacts = fixedStarContacts(provider, chart);
+    const regulusSun = contacts.find((c) => c.star === "Regulus" && c.point === "sun");
+    expect(regulusSun).toBeDefined();
+    expect(regulusSun!.orb).toBeLessThan(1);
+  });
+});
+
 describe("part of spirit", () => {
   it("mirrors fortune around the ascendant by sect", () => {
     const chart = computeChart(

@@ -53,7 +53,10 @@ import {
   type Varga,
 } from "@astron/core";
 import { SwephProvider } from "@astron/core/sweph";
+import { fixedStarContacts } from "@astron/core";
+import { readChart } from "@astron/interpret";
 import { LIGHT_THEME, renderBouquet, renderWheel } from "@astron/charts";
+import { renderReport } from "./report.js";
 import { Command } from "commander";
 import { DateTime } from "luxon";
 import { writeFileSync } from "node:fs";
@@ -108,6 +111,46 @@ interface CommonOpts {
   julian?: boolean;
   svg?: string;
   light?: boolean;
+  read?: boolean;
+  stars?: boolean;
+  report?: string;
+}
+
+function printReading(chart: Chart, scheme: RulershipScheme): void {
+  const reading = readChart(chart, scheme);
+  console.log("\n  THE READING, IN PARTS");
+  for (const r of reading.placements) {
+    const where = `${r.position.sign}${r.position.house ? `, house ${r.position.house}` : ""}`;
+    console.log(`\n  ${BODY_GLYPHS[r.position.body]} ${BODY_NAMES[r.position.body]} in ${where}`);
+    console.log(`     the planet  ${r.archetype}`);
+    console.log(`     light       ${r.sign.light}`);
+    console.log(`     truth       ${r.sign.truth}`);
+    console.log(`     shadow      ${r.sign.shadow}`);
+    if (r.house) console.log(`     the house   ${r.house}`);
+    for (const d of r.dignityNotes) console.log(`     dignity     ${d}`);
+  }
+  console.log("\n  ASPECT READINGS (orb ≤ 4°)");
+  for (const r of reading.aspects) {
+    console.log(`\n  ${BODY_GLYPHS[r.aspect.a]}–${BODY_GLYPHS[r.aspect.b]} ${BODY_NAMES[r.aspect.a]} ${r.aspect.name} ${BODY_NAMES[r.aspect.b]}`);
+    console.log(`     pairing     ${r.pairing}`);
+    console.log(`     light       ${r.lenses.light}`);
+    console.log(`     truth       ${r.lenses.truth}`);
+    console.log(`     shadow      ${r.lenses.shadow}`);
+  }
+  console.log(`\n  ${reading.disclaimer}`);
+}
+
+function printStars(chart: Chart, provider: SwephProvider): void {
+  const contacts = fixedStarContacts(provider, chart);
+  console.log("\n  FIXED STAR CONTACTS (conjunctions, orb ≤ 1°)");
+  if (!contacts.length) {
+    console.log("  (none — the bright stars pass this chart quietly)");
+    return;
+  }
+  for (const c of contacts) {
+    const point = c.point === "asc" ? "Ascendant" : c.point === "mc" ? "Midheaven" : BODY_NAMES[c.point];
+    console.log(`  ${c.star.padEnd(12)} ${formatLongitude(c.starLongitude).padEnd(19)} conjunct ${point}  orb ${c.orb.toFixed(2)}°`);
+  }
 }
 
 function maybeWriteSvg(opts: CommonOpts, render: () => string): void {
@@ -385,6 +428,9 @@ function addCommonOptions(cmd: Command): Command {
     .option("--julian", "date is in the Julian calendar (implies Local Mean Time)")
     .option("--svg <path>", "write a chart wheel SVG to this file")
     .option("--light", "use the ink-on-paper wheel theme (with --svg)")
+    .option("--read", "print the interpretation — assembled from labelled parts")
+    .option("--stars", "list fixed-star conjunctions (royal + bright stars, 1° orb)")
+    .option("--report <path>", "write a printable HTML report (print to PDF from a browser)")
     .option("--json", "machine-readable JSON output");
 }
 
@@ -399,13 +445,42 @@ addCommonOptions(
     .description("cast a natal (or any event) chart")
     .requiredOption("-d, --date <YYYY-MM-DD>", "local date of birth/event"),
 ).action((opts: CommonOpts & { date: string }) => {
+  const provider = new SwephProvider();
   const moment = resolveMoment(opts.date, opts);
-  const chart = computeChart(buildInput(moment, opts), new SwephProvider());
+  const chart = computeChart(buildInput(moment, opts), provider);
+  const scheme = schemeFor(chart);
   maybeWriteSvg(opts, () => renderWheel(chart, wheelTheme(opts)));
+  if (opts.report) {
+    writeFileSync(
+      opts.report,
+      renderReport(
+        chart,
+        {
+          title: `Natal chart — ${moment.wall.toFormat("d LLLL yyyy, HH:mm")} ${moment.zone}`,
+          subtitle: moment.location?.name ?? "location withheld",
+        },
+        scheme,
+        fixedStarContacts(provider, chart),
+      ),
+    );
+    if (!opts.json) console.log(`(report written to ${opts.report} — print to PDF from a browser)\n`);
+  }
   if (opts.json) {
-    console.log(JSON.stringify(chartToJson(chart, opts, moment), null, 2));
+    console.log(
+      JSON.stringify(
+        {
+          ...chartToJson(chart, opts, moment),
+          ...(opts.read ? { reading: readChart(chart, scheme) } : {}),
+          ...(opts.stars ? { starContacts: fixedStarContacts(provider, chart) } : {}),
+        },
+        null,
+        2,
+      ),
+    );
   } else {
     printChart(chart, moment, opts);
+    if (opts.stars) printStars(chart, provider);
+    if (opts.read) printReading(chart, scheme);
   }
 });
 

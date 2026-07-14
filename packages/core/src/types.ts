@@ -173,4 +173,13 @@ export interface EphemerisProvider {
   ): HouseData;
   /** Ayanamsa in degrees at the given moment for the given sidereal mode. */
   ayanamsa(jdUt: number, ayanamsa: Ayanamsa): number;
+  /**
+   * Fixed star position (optional capability — needs a star catalog, which
+   * the WASM build doesn't bundle).
+   */
+  fixedStar?(
+    jdUt: number,
+    star: string,
+    zodiac: ZodiacMode,
+  ): { name: string; longitude: number; latitude: number };
 }

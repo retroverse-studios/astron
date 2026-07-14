@@ -146,4 +146,18 @@ export class SwephProvider implements EphemerisProvider {
     const result = sweph.get_ayanamsa_ex_ut(jdUt, this.baseFlags());
     return result.data;
   }
+
+  fixedStar(
+    jdUt: number,
+    star: string,
+    zodiac: ZodiacMode,
+  ): { name: string; longitude: number; latitude: number } {
+    const flags = this.applyZodiac(this.baseFlags(), zodiac);
+    const result = sweph.fixstar2_ut(star, jdUt, flags);
+    if (result.error && result.flag < 0) {
+      throw new Error(`fixstar2_ut failed for ${star}: ${result.error}`);
+    }
+    const [longitude, latitude] = result.data;
+    return { name: result.name.split(",")[0]!, longitude, latitude };
+  }
 }

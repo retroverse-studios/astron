@@ -17,3 +17,4 @@ export * from "./harmonics.js";
 export * from "./dashas.js";
 export * from "./electional.js";
 export * from "./rectification.js";
+export * from "./stars.js";

@@ -24,6 +24,7 @@ import {
   type TransitHit,
   type Varga,
 } from "@astron/core";
+import { readChart } from "@astron/interpret";
 import { DateTime } from "luxon";
 import { useState } from "react";
 import { AspectTable, Notices, PlanetTable, WheelBox } from "./components/ChartView";
@@ -115,10 +116,58 @@ const VARGAS: { value: Varga | ""; label: string }[] = [
   { value: "d60", label: "D60 shashtiamsa" },
 ];
 
+function Reading({ chart, scheme }: { chart: Chart; scheme: "modern" | "traditional" }) {
+  const reading = readChart(chart, scheme);
+  const Part = ({ k, v }: { k: string; v: string }) => (
+    <p className="text-sm">
+      <span className="inline-block w-24 text-crt-amber/80 text-xs tracking-widest uppercase">{k}</span>
+      <span className="text-crt-text">{v}</span>
+    </p>
+  );
+  return (
+    <div className={panel + " p-4 space-y-4"}>
+      <h2 className="text-crt-dim text-xs tracking-widest">THE READING, IN PARTS</h2>
+      {reading.placements.map((r) => (
+        <div key={r.position.body} className="border-t border-crt-line/40 pt-2">
+          <h3 className="text-crt-bright mb-1">
+            {GLYPHS[r.position.body]} {BODY_NAMES[r.position.body]} in {r.position.sign}
+            {r.position.house ? `, house ${r.position.house}` : ""}
+          </h3>
+          <Part k="the planet" v={r.archetype} />
+          <Part k="light" v={r.sign.light} />
+          <Part k="truth" v={r.sign.truth} />
+          <Part k="shadow" v={r.sign.shadow} />
+          {r.house && <Part k="the house" v={r.house} />}
+          {r.dignityNotes.map((d) => (
+            <Part key={d} k="dignity" v={d} />
+          ))}
+        </div>
+      ))}
+      <h2 className="text-crt-dim text-xs tracking-widest pt-2">ASPECT READINGS (orb ≤ 4°)</h2>
+      {reading.aspects.map((r, i) => (
+        <div key={i} className="border-t border-crt-line/40 pt-2">
+          <h3 className="text-crt-bright mb-1">
+            {GLYPHS[r.aspect.a]} {BODY_NAMES[r.aspect.a]} {r.aspect.name} {GLYPHS[r.aspect.b]}{" "}
+            {BODY_NAMES[r.aspect.b]} <span className="text-crt-dim text-sm">orb {r.aspect.orb.toFixed(1)}°</span>
+          </h3>
+          <Part k="pairing" v={r.pairing} />
+          <Part k="light" v={r.lenses.light} />
+          <Part k="truth" v={r.lenses.truth} />
+          <Part k="shadow" v={r.lenses.shadow} />
+        </div>
+      ))}
+      <p className="text-xs text-crt-dim leading-relaxed border border-crt-line rounded p-3">
+        {reading.disclaimer}
+      </p>
+    </div>
+  );
+}
+
 function NatalTab({ person, setPerson, settings, scheme, peopleApi }: TabProps) {
   const cast = useCast<ReturnType<typeof castNatal>>();
   const [varga, setVarga] = useState<Varga | "">("");
   const [harmonic, setHarmonic] = useState("");
+  const [showReading, setShowReading] = useState(false);
   const harmonicN = parseInt(harmonic, 10);
   return (
     <div className="grid lg:grid-cols-[340px_1fr] gap-6">
@@ -167,6 +216,10 @@ function NatalTab({ person, setPerson, settings, scheme, peopleApi }: TabProps) 
             NOW
           </button>
         </div>
+        <label className="flex items-center gap-2 text-xs text-crt-dim">
+          <input type="checkbox" checked={showReading} onChange={(e) => setShowReading(e.target.checked)} />
+          show the reading (assembled from parts, disclaimer included)
+        </label>
         {cast.error && <p className="text-red-400 text-sm">{cast.error}</p>}
         {cast.result && (
           <Notices notes={chartNotes(cast.result.chart, cast.result.resolved.method, cast.result.noTime)} />
@@ -205,6 +258,7 @@ function NatalTab({ person, setPerson, settings, scheme, peopleApi }: TabProps) 
               </div>
             )}
             <AspectTable aspects={cast.result.chart.aspects} />
+            {showReading && <Reading chart={cast.result.chart} scheme={scheme} />}
           </>
         ) : (
           <div className={panel + " p-16 text-center text-crt-dim"}>enter birth data and cast a chart</div>
