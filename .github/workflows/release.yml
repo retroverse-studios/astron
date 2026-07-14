@@ -1,8 +1,8 @@
 name: Release
 
 # Builds desktop installers when a v* tag is pushed and attaches them to a
-# draft GitHub release. Unsigned builds: macOS users need right-click → Open
-# the first time (code signing needs Apple/MS certificates — a later step).
+# draft GitHub release. macOS bundles are code-signed with a Developer ID
+# certificate and notarized by Apple during bundling (Windows/Linux unsigned).
 on:
   push:
     tags: ["v*"]
@@ -47,6 +47,14 @@ jobs:
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # macOS code signing (presence of these triggers signing in the
+          # Tauri bundler) and notarization (Apple ID + app-specific password).
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
           projectPath: apps/desktop
           tagName: ${{ github.ref_name }}
