@@ -42,7 +42,9 @@ jobs:
           targets: aarch64-apple-darwin,x86_64-apple-darwin
 
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @astron/core build && pnpm --filter @astron/atlas build && pnpm --filter @astron/charts build && pnpm --filter @astron/ephemeris-wasm build
+      # Build all workspace packages (topological order) exactly like CI does,
+      # so newly added packages (e.g. @astron/interpret) are never missed.
+      - run: pnpm -r --filter '!astron-desktop' build
 
       - uses: tauri-apps/tauri-action@v0
         env:
