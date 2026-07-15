@@ -87,6 +87,7 @@ interface TabProps {
   scheme: "modern" | "traditional";
   peopleApi: ReturnType<typeof useSavedPeople>;
   overridesApi: OverridesApi;
+  narrator: NarratorId;
 }
 
 function PersonPanel({
@@ -137,10 +138,12 @@ function Reading({
   chart,
   scheme,
   overridesApi,
+  narrator,
 }: {
   chart: Chart;
   scheme: "modern" | "traditional";
   overridesApi: OverridesApi;
+  narrator: NarratorId;
 }) {
   const [mode, setMode] = useState<ReadingMode>("parts");
   const [apiKey, setApiKey] = useState(() => localStorage.getItem("astron.aiKey") ?? "");
@@ -150,10 +153,6 @@ function Reading({
   const [aiText, setAiText] = useState<{ text: string; provenance: string }>();
   const [aiBusy, setAiBusy] = useState(false);
   const [aiError, setAiError] = useState<string>();
-  const [narrator, setNarrator] = useState<NarratorId>(() => {
-    const stored = localStorage.getItem("astron.narrator") as NarratorId | null;
-    return stored && stored in NARRATORS ? stored : "plain";
-  });
   // Narrator sets are complete alternative wordings; the user's personalised
   // passages are edits to the plain text, so they only apply there.
   const content =
@@ -180,25 +179,15 @@ function Reading({
         <option value="fluent">fluent — built-in set, AI-written once</option>
         <option value="ai">AI live — your own key (data leaves this machine)</option>
       </select>
-      {mode !== "ai" && (
-        <>
-          <label className="text-crt-dim text-xs tracking-widest">NARRATOR</label>
-          <select
-            value={narrator}
-            onChange={(e) => {
-              const id = e.target.value as NarratorId;
-              setNarrator(id);
-              localStorage.setItem("astron.narrator", id);
-            }}
-            className="bg-crt-bg border border-crt-line rounded px-2 py-1 text-xs text-crt-text"
-          >
-            {Object.entries(NARRATORS).map(([id, n]) => (
-              <option key={id} value={id}>
-                {n.label}
-              </option>
-            ))}
-          </select>
-        </>
+      {mode !== "ai" && narrator !== "plain" && (
+        <span className="text-crt-dim text-xs tracking-widest">
+          NARRATOR: {NARRATORS[narrator].label}
+        </span>
+      )}
+      {mode === "ai" && (
+        <span className="text-crt-dim text-xs">
+          (the NARRATOR setting applies to the parts &amp; fluent readings; AI mode uses its own VOICE below)
+        </span>
       )}
     </div>
   );
@@ -343,11 +332,13 @@ function Reading({
   );
 }
 
-function NatalTab({ person, setPerson, settings, scheme, peopleApi, overridesApi }: TabProps) {
+function NatalTab({ person, setPerson, settings, scheme, peopleApi, overridesApi, narrator }: TabProps) {
   const cast = useCast<ReturnType<typeof castNatal>>();
   const [varga, setVarga] = useState<Varga | "">("");
   const [harmonic, setHarmonic] = useState("");
-  const [showReading, setShowReading] = useState(false);
+  const [showReading, setShowReading] = useState(
+    () => localStorage.getItem("astron.showReading") !== "false",
+  );
   const harmonicN = parseInt(harmonic, 10);
   return (
     <div className="grid lg:grid-cols-[340px_1fr] gap-6">
@@ -397,7 +388,14 @@ function NatalTab({ person, setPerson, settings, scheme, peopleApi, overridesApi
           </button>
         </div>
         <label className="flex items-center gap-2 text-xs text-crt-dim">
-          <input type="checkbox" checked={showReading} onChange={(e) => setShowReading(e.target.checked)} />
+          <input
+            type="checkbox"
+            checked={showReading}
+            onChange={(e) => {
+              setShowReading(e.target.checked);
+              localStorage.setItem("astron.showReading", String(e.target.checked));
+            }}
+          />
           show the reading (assembled from parts, disclaimer included)
         </label>
         {cast.error && <p className="text-red-400 text-sm">{cast.error}</p>}
@@ -439,7 +437,12 @@ function NatalTab({ person, setPerson, settings, scheme, peopleApi, overridesApi
             )}
             <AspectTable aspects={cast.result.chart.aspects} />
             {showReading && (
-              <Reading chart={cast.result.chart} scheme={scheme} overridesApi={overridesApi} />
+              <Reading
+                chart={cast.result.chart}
+                scheme={scheme}
+                overridesApi={overridesApi}
+                narrator={narrator}
+              />
             )}
           </>
         ) : (
@@ -919,6 +922,10 @@ export default function App() {
   const [person, setPerson] = useState<PersonDraft>({ date: "1990-06-15", time: "10:00" });
   const [sidereal, setSidereal] = useState(false);
   const [houses, setHouses] = useState<HouseSystem>("placidus");
+  const [narrator, setNarrator] = useState<NarratorId>(() => {
+    const stored = localStorage.getItem("astron.narrator") as NarratorId | null;
+    return stored && stored in NARRATORS ? stored : "plain";
+  });
   const peopleApi = useSavedPeople();
   const overridesApi = useContentOverrides();
 
@@ -927,7 +934,7 @@ export default function App() {
     houseSystem: houses,
   };
   const scheme = sidereal ? ("traditional" as const) : ("modern" as const);
-  const tabProps: TabProps = { person, setPerson, settings, scheme, peopleApi, overridesApi };
+  const tabProps: TabProps = { person, setPerson, settings, scheme, peopleApi, overridesApi, narrator };
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
@@ -962,6 +969,25 @@ export default function App() {
               <option value="wholeSign">Whole Sign</option>
               <option value="equal">Equal</option>
               <option value="koch">Koch</option>
+            </select>
+          </div>
+          <div>
+            <label className={label}>NARRATOR</label>
+            <select
+              value={narrator}
+              onChange={(e) => {
+                const id = e.target.value as NarratorId;
+                setNarrator(id);
+                localStorage.setItem("astron.narrator", id);
+              }}
+              title="Narrator voice for the reading — same claims, different diction"
+              className="bg-crt-bg border border-crt-line rounded px-2 py-2 text-crt-bright outline-none"
+            >
+              {Object.entries(NARRATORS).map(([id, n]) => (
+                <option key={id} value={id}>
+                  {n.label}
+                </option>
+              ))}
             </select>
           </div>
         </div>
