@@ -1,5 +1,6 @@
 @import "tailwindcss";
 
+/* The phosphor-CRT default — the retroverse signature look. */
 @theme {
   --color-crt-bg: #050705;
   --color-crt-panel: #0a120c;
@@ -9,6 +10,25 @@
   --color-crt-bright: #d8f3dc;
   --color-crt-amber: #e8c47a;
   --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+:root {
+  --crt-scanline: rgba(0, 0, 0, 0.18);
+  --crt-color-scheme: dark;
+}
+
+/* Ink-on-paper light theme — remaps the same tokens, so every
+   `crt-*` utility re-themes without touching the markup. */
+:root[data-theme="light"] {
+  --color-crt-bg: #faf7f0;
+  --color-crt-panel: #f2ecdf;
+  --color-crt-line: #cfc6b2;
+  --color-crt-dim: #8a8378;
+  --color-crt-text: #3a3630;
+  --color-crt-bright: #221f1a;
+  --color-crt-amber: #8a5a1f;
+  --crt-scanline: rgba(120, 110, 90, 0.06);
+  --crt-color-scheme: light;
 }
 
 body {
@@ -27,12 +47,12 @@ body::before {
     to bottom,
     transparent 0,
     transparent 2px,
-    rgba(0, 0, 0, 0.18) 3px
+    var(--crt-scanline) 3px
   );
   z-index: 50;
 }
 
 input,
 select {
-  color-scheme: dark;
+  color-scheme: var(--crt-color-scheme);
 }

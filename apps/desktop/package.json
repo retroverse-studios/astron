@@ -1,6 +1,6 @@
 {
   "name": "astron-desktop",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "ASTRON desktop app — the web app wrapped in Tauri.",
   "license": "AGPL-3.0-only",
   "private": true,

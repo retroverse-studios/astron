@@ -1,4 +1,4 @@
-import { renderBouquet, renderWheel } from "@astron/charts";
+import { renderBouquet, renderWheel, LIGHT_THEME, type WheelTheme } from "@astron/charts";
 import {
   antardashas,
   compositeChart,
@@ -40,7 +40,7 @@ import {
 import { LibraryTab } from "./components/LibraryTab";
 import { useContentOverrides, type OverridesApi } from "./lib/overrides-store";
 import { DateTime } from "luxon";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AspectTable, Notices, PlanetTable, WheelBox } from "./components/ChartView";
 import { PersonForm } from "./components/PersonForm";
 import { BODY_NAMES, GLYPHS, button, buttonGhost, input, label, panel } from "./components/glyphs";
@@ -51,7 +51,25 @@ import { useSavedPeople } from "./lib/people";
 const TABS = ["NATAL", "TRANSITS", "RETURNS", "PROGRESSED", "DASHAS", "RELATIONSHIP", "LIBRARY"] as const;
 type Tab = (typeof TABS)[number];
 
-const wheelTheme = { theme: { background: "none" as const } };
+type WheelThemeOpt = { theme: Partial<WheelTheme> };
+
+// Transparent so the chart sits on the page background; the CRT default is
+// filled in by renderWheel, the light theme reuses the ink-on-paper palette.
+const DARK_WHEEL: WheelThemeOpt = { theme: { background: "none" } };
+const LIGHT_WHEEL: WheelThemeOpt = { theme: { ...LIGHT_THEME, background: "none" } };
+
+type Theme = "dark" | "light";
+
+function useTheme(): [Theme, () => void] {
+  const [theme, setTheme] = useState<Theme>(
+    () => (localStorage.getItem("astron.theme") === "light" ? "light" : "dark"),
+  );
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("astron.theme", theme);
+  }, [theme]);
+  return [theme, () => setTheme((t) => (t === "dark" ? "light" : "dark"))];
+}
 
 function useCast<T>() {
   const [result, setResult] = useState<T>();
@@ -88,6 +106,7 @@ interface TabProps {
   peopleApi: ReturnType<typeof useSavedPeople>;
   overridesApi: OverridesApi;
   narrator: NarratorId;
+  wheelTheme: WheelThemeOpt;
 }
 
 function PersonPanel({
@@ -332,7 +351,7 @@ function Reading({
   );
 }
 
-function NatalTab({ person, setPerson, settings, scheme, peopleApi, overridesApi, narrator }: TabProps) {
+function NatalTab({ person, setPerson, settings, scheme, peopleApi, overridesApi, narrator, wheelTheme }: TabProps) {
   const cast = useCast<ReturnType<typeof castNatal>>();
   const [varga, setVarga] = useState<Varga | "">("");
   const [harmonic, setHarmonic] = useState("");
@@ -543,7 +562,7 @@ function DashasTab({ person, setPerson, peopleApi }: TabProps) {
   );
 }
 
-function TransitsTab({ person, setPerson, settings, scheme, peopleApi }: TabProps) {
+function TransitsTab({ person, setPerson, settings, scheme, peopleApi, wheelTheme }: TabProps) {
   const [onDate, setOnDate] = useState("");
   const [atTime, setAtTime] = useState("");
   const [withScan, setWithScan] = useState(false);
@@ -642,7 +661,7 @@ function TransitsTab({ person, setPerson, settings, scheme, peopleApi }: TabProp
   );
 }
 
-function ReturnsTab({ person, setPerson, settings, scheme, peopleApi }: TabProps) {
+function ReturnsTab({ person, setPerson, settings, scheme, peopleApi, wheelTheme }: TabProps) {
   const [kind, setKind] = useState<"solar" | "lunar">("solar");
   const [year, setYear] = useState(String(new Date().getUTCFullYear()));
   const [after, setAfter] = useState("");
@@ -713,7 +732,7 @@ function ReturnsTab({ person, setPerson, settings, scheme, peopleApi }: TabProps
   );
 }
 
-function ProgressedTab({ person, setPerson, settings, scheme, peopleApi }: TabProps) {
+function ProgressedTab({ person, setPerson, settings, scheme, peopleApi, wheelTheme }: TabProps) {
   const [to, setTo] = useState("");
   const cast = useCast<{ chart: Chart; arc: number; note: string }>();
 
@@ -766,7 +785,7 @@ function ProgressedTab({ person, setPerson, settings, scheme, peopleApi }: TabPr
   );
 }
 
-function RelationshipTab({ person, setPerson, settings, scheme, peopleApi }: TabProps) {
+function RelationshipTab({ person, setPerson, settings, scheme, peopleApi, wheelTheme }: TabProps) {
   const [kind, setKind] = useState<"synastry" | "composite" | "davison">("synastry");
   const [personB, setPersonB] = useState<PersonDraft>({ date: "", time: "", city: undefined });
   const cast = useCast<
@@ -928,13 +947,24 @@ export default function App() {
   });
   const peopleApi = useSavedPeople();
   const overridesApi = useContentOverrides();
+  const [theme, toggleTheme] = useTheme();
 
   const settings: ChartSettings = {
     zodiac: sidereal ? { type: "sidereal", ayanamsa: "lahiri" } : { type: "tropical" },
     houseSystem: houses,
   };
   const scheme = sidereal ? ("traditional" as const) : ("modern" as const);
-  const tabProps: TabProps = { person, setPerson, settings, scheme, peopleApi, overridesApi, narrator };
+  const wheelTheme = theme === "light" ? LIGHT_WHEEL : DARK_WHEEL;
+  const tabProps: TabProps = {
+    person,
+    setPerson,
+    settings,
+    scheme,
+    peopleApi,
+    overridesApi,
+    narrator,
+    wheelTheme,
+  };
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
@@ -947,6 +977,18 @@ export default function App() {
           </p>
         </div>
         <div className="flex gap-3">
+          <div>
+            <label className={label}>THEME</label>
+            <button
+              type="button"
+              onClick={toggleTheme}
+              title={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+              aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+              className="bg-crt-bg border border-crt-line rounded px-3 py-2 text-crt-bright outline-none hover:border-crt-dim"
+            >
+              {theme === "dark" ? "☾ dark" : "☀ light"}
+            </button>
+          </div>
           <div>
             <label className={label}>ZODIAC</label>
             <select
