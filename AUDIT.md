@@ -224,8 +224,11 @@ read as missing.
   are exported but unused anywhere including tests. As published-package API
   they may be deliberate; otherwise delete. (Most other "unused export"
   hits are genuine public API types consumed via return types — not dead.)
-- `serde_json` in `src-tauri/Cargo.toml:19` is unused (no `serde` in Rust
-  sources). Dead dependency.
+- `serde_json` in `src-tauri/Cargo.toml` looks unused (no Rust source
+  names it) but is required: `tauri::generate_context!` expands to
+  `serde_json` paths. Removing it broke the v0.1.5 release build on all
+  platforms; restored in v0.1.6 with an explanatory comment. (Corrected
+  after the failed release — the original audit call was wrong.)
 - CLI synastry: `aspects: result.aspects.map((x) => ({ ...x, a: x.a, b: x.b }))`
   (`index.ts:872`) is a no-op copy — and, per H2, exactly where the a/b swap
   should have been.
@@ -345,8 +348,7 @@ CLI validate unit + spawned invalid-input tests).
 - U4 fixed: dead re-export removed; PlaceSearch keyboard/Escape/blur +
   ARIA; tabs `role=tab/aria-selected`; disclaimer autofocus.
 - Low fixed: glyph/name tables consolidated into `@astron/core`
-  (`bodies.ts`, `CHART_BODY_GLYPHS` kept as compat alias); `serde_json`
-  dead dep removed; Cargo version aligned 0.1.4; no-op synastry map
+  (`bodies.ts`, `CHART_BODY_GLYPHS` kept as compat alias); Cargo version aligned; no-op synastry map
   removed; `Part` hoisted; `ordinal`/`formatOffset` rewritten;
   `parseCityTsv` skips blanks; `RELEASES_URL` dead const removed.
 - Complexity: Reading extracted to `components/Reading.tsx`; narrators
