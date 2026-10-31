@@ -18,7 +18,7 @@
     "@astron/charts": "workspace:^",
     "@astron/core": "workspace:*",
     "@astron/interpret": "workspace:^",
-    "commander": "^12.1.0",
+    "commander": "^15.0.0",
     "luxon": "^3.5.0"
   },
   "devDependencies": {
