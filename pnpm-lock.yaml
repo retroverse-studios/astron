@@ -97,8 +97,8 @@ importers:
         specifier: ^18.3.1
         version: 18.3.1(react@18.3.1)
       swisseph-wasm:
-        specifier: ^0.0.5
-        version: 0.0.5
+        specifier: ^0.1.0
+        version: 0.1.0
     devDependencies:
       '@tailwindcss/vite':
         specifier: ^4.3.3
@@ -188,8 +188,8 @@ importers:
         specifier: workspace:*
         version: link:../core
       swisseph-wasm:
-        specifier: ^0.0.5
-        version: 0.0.5
+        specifier: ^0.1.0
+        version: 0.1.0
     devDependencies:
       typescript:
         specifier: ^5.7.0
@@ -1340,8 +1340,8 @@ packages:
   sweph@2.10.3-7:
     resolution: {integrity: sha512-C/+CoJ2KNWaDpWbExzZB/z6oyg7zABVPCtIWVV9nbN974tREShNgYjTGFAI+tPj4Iy8FJqL9C7rLyoIdplJZgQ==}
 
-  swisseph-wasm@0.0.5:
-    resolution: {integrity: sha512-v4n6gV79pWJEW0EbIo4P7B2of6Wnl3MLkrJdaEBf7Fj5zjyMYX1FWsqNnsJbydt4ztROF+UCa+I+UGdT4JVfTw==}
+  swisseph-wasm@0.1.0:
+    resolution: {integrity: sha512-Krgn8o9Qv+oJQO4xR12pgVyV8Am0x/21QqSTfGlUBqiIjUCwT5LfWWRX3d0N5EgNiwJ9tYoop3q7QahMrY/xSA==}
     engines: {node: '>=14.0.0'}
 
   tailwindcss@4.3.3:
@@ -2431,7 +2431,7 @@ snapshots:
       node-addon-api: 8.9.0
       node-gyp-build: 4.8.4
 
-  swisseph-wasm@0.0.5: {}
+  swisseph-wasm@0.1.0: {}
 
   tailwindcss@4.3.3: {}
 
