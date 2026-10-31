@@ -169,8 +169,8 @@ importers:
   packages/core:
     dependencies:
       sweph:
-        specifier: 2.10.3-7
-        version: 2.10.3-7
+        specifier: 2.10.3-8
+        version: 2.10.3-8
     devDependencies:
       '@types/node':
         specifier: ^22
@@ -1240,8 +1240,8 @@ packages:
   natural-compare@1.4.0:
     resolution: {integrity: sha512-OWND8ei3VtNC9h7V60qff3SVobHr996CTwgxubgyQYEpg290h9J0buyECNNJexkFm5sOajh5G116RYA1c8ZMSw==}
 
-  node-addon-api@8.9.0:
-    resolution: {integrity: sha512-ekZMeaaIzSQTSpr7X2X3iJM7lTzgnx8ahAG9pJfT/7+14mlEM8ZYQ9cgCDvSSRbReFK0oHli3WrZdCiRsgAT9Q==}
+  node-addon-api@8.9.2:
+    resolution: {integrity: sha512-VijLXbi3UACN69I0JVXJsX4tjACjNoQDgv2gTF6sx2wWEi8tkSg2eX8p5gSIFi8z2+DL3oHmY6OyKce38SDolg==}
     engines: {node: ^18 || ^20 || >= 21}
 
   node-gyp-build@4.8.4:
@@ -1337,8 +1337,8 @@ packages:
   std-env@4.3.0:
     resolution: {integrity: sha512-OtU/EgQ1kIm5KwqQpBC6ZEMXrZRui11w8zgfTWp8cdO9B8OaPsbA8bTHO2P+HNo1VlUTGMVBwPhydu6poeXiag==}
 
-  sweph@2.10.3-7:
-    resolution: {integrity: sha512-C/+CoJ2KNWaDpWbExzZB/z6oyg7zABVPCtIWVV9nbN974tREShNgYjTGFAI+tPj4Iy8FJqL9C7rLyoIdplJZgQ==}
+  sweph@2.10.3-8:
+    resolution: {integrity: sha512-qHArDr/J05ygyVIxQqIkSMc8V54/ISO7eYX/ulN/3yOKtORc4k7ZRU8av5N/wrtPu9Kg049UDxL4I+DT6cRnfw==}
 
   swisseph-wasm@0.0.5:
     resolution: {integrity: sha512-v4n6gV79pWJEW0EbIo4P7B2of6Wnl3MLkrJdaEBf7Fj5zjyMYX1FWsqNnsJbydt4ztROF+UCa+I+UGdT4JVfTw==}
@@ -2332,7 +2332,7 @@ snapshots:
 
   natural-compare@1.4.0: {}
 
-  node-addon-api@8.9.0: {}
+  node-addon-api@8.9.2: {}
 
   node-gyp-build@4.8.4: {}
 
@@ -2426,9 +2426,9 @@ snapshots:
 
   std-env@4.3.0: {}
 
-  sweph@2.10.3-7:
+  sweph@2.10.3-8:
     dependencies:
-      node-addon-api: 8.9.0
+      node-addon-api: 8.9.2
       node-gyp-build: 4.8.4
 
   swisseph-wasm@0.0.5: {}
