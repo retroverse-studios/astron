@@ -2,7 +2,12 @@ import { describe, expect, it } from "vitest";
 import { synastryBouquet, type Aspect } from "@astron/core";
 import { renderBouquet } from "../src/bouquet.js";
 
-const aspect = (a: Aspect["a"], name: Aspect["name"], b: Aspect["b"], orb = 1): Aspect => ({
+const aspect = (
+  a: Aspect["a"],
+  name: Aspect["name"],
+  b: Aspect["b"],
+  orb = 1,
+): Aspect => ({
   a,
   b,
   name,

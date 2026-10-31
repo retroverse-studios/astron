@@ -44,7 +44,9 @@ describe("returns", () => {
 
   it("solar return puts the Sun exactly on its natal longitude", () => {
     const sr = solarReturn(provider, natal, 2026);
-    expect(Math.abs(norm180(lonOf(sr, "sun") - lonOf(natal, "sun")))).toBeLessThan(1e-3);
+    expect(
+      Math.abs(norm180(lonOf(sr, "sun") - lonOf(natal, "sun"))),
+    ).toBeLessThan(1e-3);
     // within a couple of days of the birthday
     expect(sr.utc.getUTCMonth()).toBe(5);
     expect(Math.abs(sr.utc.getUTCDate() - 15)).toBeLessThanOrEqual(2);
@@ -54,7 +56,9 @@ describe("returns", () => {
   it("lunar return finds the next Moon return after a date", () => {
     const after = new Date(Date.UTC(2026, 6, 1));
     const lr = lunarReturn(provider, natal, after);
-    expect(Math.abs(norm180(lonOf(lr, "moon") - lonOf(natal, "moon")))).toBeLessThan(1e-3);
+    expect(
+      Math.abs(norm180(lonOf(lr, "moon") - lonOf(natal, "moon"))),
+    ).toBeLessThan(1e-3);
     const days = (lr.utc.getTime() - after.getTime()) / 86400000;
     expect(days).toBeGreaterThan(0);
     expect(days).toBeLessThan(28);
@@ -82,7 +86,9 @@ describe("progressions", () => {
     expect(arc).toBeLessThan(31.5);
     for (const p of positions) {
       const natalP = natal.positions.find((n) => n.body === p.body)!;
-      expect(Math.abs(norm180(p.longitude - natalP.longitude - arc))).toBeLessThan(1e-9);
+      expect(
+        Math.abs(norm180(p.longitude - natalP.longitude - arc)),
+      ).toBeLessThan(1e-9);
     }
   });
 });
@@ -119,13 +125,19 @@ describe("scanners", () => {
     const newMoon = events.find((e) => e.type === "new")!;
     expect(newMoon.utc.toISOString().slice(0, 10)).toBe("2024-04-08");
     // one of each phase in a synodic month
-    expect(events.map((e) => e.type).sort()).toEqual(
-      ["firstQuarter", "full", "lastQuarter", "new"],
-    );
+    expect(events.map((e) => e.type).sort()).toEqual([
+      "firstQuarter",
+      "full",
+      "lastQuarter",
+      "new",
+    ]);
   });
 
   it("finds all three passes of a Saturn return across a station", () => {
-    const natal = computeChart({ utc: new Date(Date.UTC(1990, 0, 1, 12)) }, provider);
+    const natal = computeChart(
+      { utc: new Date(Date.UTC(1990, 0, 1, 12)) },
+      provider,
+    );
     const natalSaturn = natal.positions.filter((p) => p.body === "saturn");
     const hits = scanTransits(
       provider,
@@ -137,7 +149,9 @@ describe("scanners", () => {
     expect(hits.map((h) => h.retrograde)).toEqual([false, true, false]);
     for (const h of hits) {
       const at = provider.bodyPosition(h.jd, "saturn", { type: "tropical" });
-      expect(Math.abs(norm180(at.longitude - natalSaturn[0]!.longitude))).toBeLessThan(1e-3);
+      expect(
+        Math.abs(norm180(at.longitude - natalSaturn[0]!.longitude)),
+      ).toBeLessThan(1e-3);
     }
   });
 
@@ -149,7 +163,9 @@ describe("scanners", () => {
     expect(periods.length).toBeGreaterThan(1);
     for (const p of periods) {
       expect(p.jdEnd).toBeGreaterThan(p.jdStart);
-      const moonAtEnd = provider.bodyPosition(p.jdEnd + 1e-4, "moon", { type: "tropical" });
+      const moonAtEnd = provider.bodyPosition(p.jdEnd + 1e-4, "moon", {
+        type: "tropical",
+      });
       expect(moonAtEnd.sign).toBe(p.entering);
       expect(moonAtEnd.signDegree).toBeLessThan(0.01);
     }

@@ -1,5 +1,9 @@
-import type { BouquetItem, BouquetProfile } from "@astron/core";
-import { CHART_BODY_GLYPHS } from "./wheel.js";
+import {
+  BODY_GLYPHS,
+  type BouquetItem,
+  type BouquetProfile,
+} from "@astron/core";
+import { escAttr, escText } from "./escape.js";
 import { DEFAULT_THEME, type WheelTheme } from "./theme.js";
 
 export interface BouquetOptions {
@@ -23,7 +27,8 @@ interface Tip {
 
 function stemTip(index: number, count: number, item: BouquetItem): Tip {
   const t = count === 1 ? 0.5 : index / (count - 1);
-  const angle = (-56 + 112 * t + (jitter(index, 1) - 0.5) * 10) * (Math.PI / 180);
+  const angle =
+    (-56 + 112 * t + (jitter(index, 1) - 0.5) * 10) * (Math.PI / 180);
   const base = item.kind === "thorn" ? 140 : 165;
   const length = base + jitter(index, 2) * 85 + item.weight * 30;
   return {
@@ -49,14 +54,25 @@ function stemPath(tip: Tip, stroke: string): string {
  * the profile's weights. The caller must surface profile.disclaimer next
  * to the image — the picture is a mood, not a measurement.
  */
-export function renderBouquet(profile: BouquetProfile, options: BouquetOptions = {}): string {
-  const theme: WheelTheme = { ...DEFAULT_THEME, ...options.theme };
+export function renderBouquet(
+  profile: BouquetProfile,
+  options: BouquetOptions = {},
+): string {
+  // Theme strings land in attribute values throughout; escape them once.
+  const theme = Object.fromEntries(
+    Object.entries({ ...DEFAULT_THEME, ...options.theme }).map(([k, v]) => [
+      k,
+      typeof v === "string" ? escAttr(v) : v,
+    ]),
+  ) as unknown as WheelTheme;
   const size = options.size ?? W;
   const petalColors = [theme.fire, theme.water, theme.air, theme.earth];
   const parts: string[] = [];
 
   if (theme.background !== "none") {
-    parts.push(`<rect width="${W}" height="${W + 60}" fill="${theme.background}"/>`);
+    parts.push(
+      `<rect width="${W}" height="${W + 60}" fill="${theme.background}"/>`,
+    );
   }
 
   // Deterministic shuffle so kinds mingle across the fan instead of banding.
@@ -67,7 +83,7 @@ export function renderBouquet(profile: BouquetProfile, options: BouquetOptions =
 
   items.forEach((item, i) => {
     const tip = stemTip(i, items.length, item);
-    const title = `<title>${CHART_BODY_GLYPHS[item.aspect.a]} ${item.aspect.name} ${CHART_BODY_GLYPHS[item.aspect.b]} · orb ${item.aspect.orb.toFixed(1)}°</title>`;
+    const title = `<title>${escText(`${BODY_GLYPHS[item.aspect.a]} ${item.aspect.name} ${BODY_GLYPHS[item.aspect.b]} · orb ${item.aspect.orb.toFixed(1)}°`)}</title>`;
     const group: string[] = [stemPath(tip, theme.ring)];
 
     if (item.kind === "bloom") {
@@ -79,7 +95,9 @@ export function renderBouquet(profile: BouquetProfile, options: BouquetOptions =
           `<circle cx="${fmt(tip.x + r * Math.cos(pa))}" cy="${fmt(tip.y + r * Math.sin(pa))}" r="${fmt(r * 0.72)}" fill="${color}" opacity="0.82"/>`,
         );
       }
-      group.push(`<circle cx="${fmt(tip.x)}" cy="${fmt(tip.y)}" r="${fmt(r * 0.55)}" fill="${theme.planetGlyph}"/>`);
+      group.push(
+        `<circle cx="${fmt(tip.x)}" cy="${fmt(tip.y)}" r="${fmt(r * 0.55)}" fill="${theme.planetGlyph}"/>`,
+      );
     } else if (item.kind === "bud") {
       const r = 4 + 4 * item.weight;
       group.push(
@@ -97,7 +115,9 @@ export function renderBouquet(profile: BouquetProfile, options: BouquetOptions =
           `<line x1="${fmt(bx)}" y1="${fmt(by)}" x2="${fmt(bx + side * barbLen * Math.cos(tip.angle))}" y2="${fmt(by + side * barbLen * Math.sin(tip.angle) - barbLen * 0.6)}" stroke="${theme.aspectHard}" stroke-width="1.8"/>`,
         );
       }
-      group.push(`<circle cx="${fmt(tip.x)}" cy="${fmt(tip.y)}" r="${fmt(2 + 2 * item.weight)}" fill="${theme.aspectHard}"/>`);
+      group.push(
+        `<circle cx="${fmt(tip.x)}" cy="${fmt(tip.y)}" r="${fmt(2 + 2 * item.weight)}" fill="${theme.aspectHard}"/>`,
+      );
     }
     parts.push(`<g>${title}${group.join("")}</g>`);
   });
@@ -112,15 +132,17 @@ export function renderBouquet(profile: BouquetProfile, options: BouquetOptions =
 
   const caption = profile.items.length
     ? [
-        profile.blooms && `${profile.blooms} bloom${profile.blooms === 1 ? "" : "s"}`,
-        profile.thorns && `${profile.thorns} thorn${profile.thorns === 1 ? "" : "s"}`,
+        profile.blooms &&
+          `${profile.blooms} bloom${profile.blooms === 1 ? "" : "s"}`,
+        profile.thorns &&
+          `${profile.thorns} thorn${profile.thorns === 1 ? "" : "s"}`,
         profile.buds && `${profile.buds} bud${profile.buds === 1 ? "" : "s"}`,
       ]
         .filter(Boolean)
         .join(" · ")
     : "no aspects within orb — an empty vase, which is also information";
   parts.push(
-    `<text x="${W / 2}" y="${W + 34}" fill="${theme.angleText}" font-size="15" text-anchor="middle" letter-spacing="1">${caption}</text>`,
+    `<text x="${W / 2}" y="${W + 34}" fill="${theme.angleText}" font-size="15" text-anchor="middle" letter-spacing="1">${escText(caption)}</text>`,
   );
 
   return (

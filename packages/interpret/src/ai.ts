@@ -1,9 +1,13 @@
-import { formatLongitude, type Chart, type RulershipScheme } from "@astron/core";
+import {
+  formatLongitude,
+  type Chart,
+  type RulershipScheme,
+} from "@astron/core";
 import { readChart } from "./index.js";
 import { fluentPlacement } from "./fluent.js";
 
 export interface AiOptions {
-  /** The user's own Anthropic API key — never stored or proxied by ASTRON. */
+  /** The user's own Anthropic API key — never proxied by ASTRON (apps may keep it locally only with the user's consent). */
   apiKey: string;
   model?: string;
   /** Optional extra instruction, e.g. "focus on career" or "shorter". */
@@ -96,7 +100,9 @@ export function buildReadingPrompt(
   emphasis?: string,
   voice?: string,
 ): { system: string; user: string } {
-  const voiceInstruction = voice ? (VOICES[voice]?.instruction ?? voice) : undefined;
+  const voiceInstruction = voice
+    ? (VOICES[voice]?.instruction ?? voice)
+    : undefined;
   const system = voiceInstruction
     ? `${SYSTEM_PROMPT}\n\nVOICE OVERLAY: write in the voice of ${voiceInstruction}. The voice changes diction and imagery only — every honesty rule above still binds, in character.`
     : SYSTEM_PROMPT;
@@ -111,7 +117,11 @@ export function buildReadingPrompt(
     lenses: r.sign,
     houseDomain: r.house,
     dignities: r.dignityNotes,
-    fluentDraft: fluentPlacement(r.position.body, r.position.sign, r.position.house),
+    fluentDraft: fluentPlacement(
+      r.position.body,
+      r.position.sign,
+      r.position.house,
+    ),
   }));
   const aspects = reading.aspects.map((r) => ({
     a: r.aspect.a,
@@ -139,7 +149,12 @@ export async function aiReading(
   options: AiOptions,
 ): Promise<{ text: string; provenance: string; model: string }> {
   const model = options.model ?? DEFAULT_AI_MODEL;
-  const prompt = buildReadingPrompt(chart, scheme, options.emphasis, options.voice);
+  const prompt = buildReadingPrompt(
+    chart,
+    scheme,
+    options.emphasis,
+    options.voice,
+  );
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -159,7 +174,9 @@ export async function aiReading(
     const body = await res.text().catch(() => "");
     throw new Error(`Anthropic API ${res.status}: ${body.slice(0, 300)}`);
   }
-  const data = (await res.json()) as { content: { type: string; text?: string }[] };
+  const data = (await res.json()) as {
+    content: { type: string; text?: string }[];
+  };
   const text = data.content
     .filter((b) => b.type === "text" && b.text)
     .map((b) => b.text)

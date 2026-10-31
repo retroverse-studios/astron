@@ -55,8 +55,7 @@ export function vimshottariDashas(
 
   for (let i = 0; i < 9 * cycles; i++) {
     const [lord, years] = SEQUENCE[(firstIndex + i) % 9]!;
-    const lengthDays =
-      years * YEAR_DAYS * (i === 0 ? 1 - traversed : 1);
+    const lengthDays = years * YEAR_DAYS * (i === 0 ? 1 - traversed : 1);
     periods.push({
       lord,
       start: utcFromJulianDay(jd),
@@ -76,6 +75,30 @@ export function antardashas(maha: DashaPeriod): DashaPeriod[] {
   const startIndex = SEQUENCE.findIndex(([lord]) => lord === maha.lord);
   const jdStart = julianDayUtc(maha.start);
   const totalDays = julianDayUtc(maha.end) - jdStart;
+  const fullDays = SEQUENCE[startIndex]![1] * YEAR_DAYS;
+
+  // The birth mahadasha is usually partial: birth falls mid-period, so its
+  // antardashas must be laid out over the FULL mahadasha and clipped to
+  // the part from birth onward — partitioning the remainder would compress
+  // every sub-period and restart the sequence at the maha lord.
+  if (totalDays < fullDays - 1) {
+    const fullStart = jdStart - (fullDays - totalDays);
+    const periods: DashaPeriod[] = [];
+    let jd = fullStart;
+    for (let i = 0; i < 9; i++) {
+      const [lord, years] = SEQUENCE[(startIndex + i) % 9]!;
+      const end = jd + (fullDays * years) / 120;
+      if (end > jdStart) {
+        periods.push({
+          lord,
+          start: utcFromJulianDay(Math.max(jd, jdStart)),
+          end: utcFromJulianDay(end),
+        });
+      }
+      jd = end;
+    }
+    return periods;
+  }
 
   const periods: DashaPeriod[] = [];
   let jd = jdStart;
@@ -93,6 +116,9 @@ export function antardashas(maha: DashaPeriod): DashaPeriod[] {
 }
 
 /** The period covering a given date, if any. */
-export function dashaAt(periods: DashaPeriod[], when: Date): DashaPeriod | undefined {
+export function dashaAt(
+  periods: DashaPeriod[],
+  when: Date,
+): DashaPeriod | undefined {
   return periods.find((p) => p.start <= when && when < p.end);
 }

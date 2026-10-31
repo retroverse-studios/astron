@@ -20,7 +20,10 @@ const provider = new SwephProvider();
 
 describe("harmonics", () => {
   it("multiplies longitudes mod 360", () => {
-    const chart = computeChart({ utc: new Date(Date.UTC(1990, 5, 15, 4, 30)) }, provider);
+    const chart = computeChart(
+      { utc: new Date(Date.UTC(1990, 5, 15, 4, 30)) },
+      provider,
+    );
     const h5 = harmonicChart(chart, 5);
     for (const p of h5.positions) {
       const natal = chart.positions.find((x) => x.body === p.body)!;
@@ -84,17 +87,27 @@ describe("vimshottari dashas", () => {
     const periods = vimshottariDashas(0, birth);
     expect(periods[0]!.lord).toBe("ketu");
     const years =
-      (julianDayUtc(periods[0]!.end) - julianDayUtc(periods[0]!.start)) / 365.25;
+      (julianDayUtc(periods[0]!.end) - julianDayUtc(periods[0]!.start)) /
+      365.25;
     expect(years).toBeCloseTo(7, 5);
   });
 
   it("a full cycle spans 120 years and follows the sequence", () => {
     const periods = vimshottariDashas(0, birth);
     expect(periods.map((p) => p.lord)).toEqual([
-      "ketu", "venus", "sun", "moon", "mars", "rahu", "jupiter", "saturn", "mercury",
+      "ketu",
+      "venus",
+      "sun",
+      "moon",
+      "mars",
+      "rahu",
+      "jupiter",
+      "saturn",
+      "mercury",
     ]);
     const total =
-      (julianDayUtc(periods[8]!.end) - julianDayUtc(periods[0]!.start)) / 365.25;
+      (julianDayUtc(periods[8]!.end) - julianDayUtc(periods[0]!.start)) /
+      365.25;
     expect(total).toBeCloseTo(120, 5);
   });
 
@@ -103,7 +116,8 @@ describe("vimshottari dashas", () => {
     const periods = vimshottariDashas(20, birth);
     expect(periods[0]!.lord).toBe("venus");
     const years =
-      (julianDayUtc(periods[0]!.end) - julianDayUtc(periods[0]!.start)) / 365.25;
+      (julianDayUtc(periods[0]!.end) - julianDayUtc(periods[0]!.start)) /
+      365.25;
     expect(years).toBeCloseTo(10, 5);
   });
 
@@ -113,10 +127,44 @@ describe("vimshottari dashas", () => {
     expect(subs[0]!.lord).toBe("venus");
     expect(subs).toHaveLength(9);
     expect(subs[0]!.start.getTime()).toBe(maha.start.getTime());
-    expect(Math.abs(subs[8]!.end.getTime() - maha.end.getTime())).toBeLessThan(5);
+    expect(Math.abs(subs[8]!.end.getTime() - maha.end.getTime())).toBeLessThan(
+      5,
+    );
     // Venus antardasha of Venus mahadasha = 20*20/120 years
-    const years = (julianDayUtc(subs[0]!.end) - julianDayUtc(subs[0]!.start)) / 365.25;
+    const years =
+      (julianDayUtc(subs[0]!.end) - julianDayUtc(subs[0]!.start)) / 365.25;
     expect(years).toBeCloseTo((20 * 20) / 120, 5);
+  });
+
+  it("antardashas of the partial first mahadasha start mid-sequence", () => {
+    // Moon mid Bharani (20°): half of the 20-year Venus mahadasha (10y) is
+    // already elapsed at birth. In the full Venus sequence the elapsed 10
+    // years run Venus 3.33 + Sun 1 + Moon 1.67 + Mars 1.17 + Rahu 3 = 10.17,
+    // so birth falls inside Venus–Rahu, not at Venus–Venus.
+    const first = vimshottariDashas(20, birth)[0]!;
+    const subs = antardashas(first);
+    expect(subs[0]!.lord).toBe("rahu");
+    expect(subs[0]!.start.getTime()).toBe(first.start.getTime());
+    expect(
+      Math.abs(subs[subs.length - 1]!.end.getTime() - first.end.getTime()),
+    ).toBeLessThan(5);
+    // lords from Rahu onward, wrapping the sequence
+    expect(subs.map((s) => s.lord)).toEqual([
+      "rahu",
+      "jupiter",
+      "saturn",
+      "mercury",
+      "ketu",
+    ]);
+    // Venus–Jupiter length is the full-period 20*16/120 years, not compressed
+    const jup = subs.find((s) => s.lord === "jupiter")!;
+    expect(
+      (julianDayUtc(jup.end) - julianDayUtc(jup.start)) / 365.25,
+    ).toBeCloseTo((20 * 16) / 120, 5);
+  });
+
+  it("rejects unknown vargas instead of returning undefined", () => {
+    expect(() => vargaSign(10, "bogus" as never)).toThrow(/varga/);
   });
 
   it("dashaAt finds the running period", () => {
@@ -128,7 +176,9 @@ describe("vimshottari dashas", () => {
 
 describe("fixed stars", () => {
   it("places Regulus at its documented J2000 longitude", () => {
-    const star = provider.fixedStar!(2451545.0, "Regulus", { type: "tropical" });
+    const star = provider.fixedStar!(2451545.0, "Regulus", {
+      type: "tropical",
+    });
     expect(star.longitude).toBeCloseTo(149.83, 1); // 29°50′ Leo
     expect(star.name).toBe("Regulus");
   });
@@ -136,9 +186,14 @@ describe("fixed stars", () => {
   it("finds star contacts to chart points within orb", async () => {
     const { fixedStarContacts } = await import("../src/stars.js");
     // Sun conjunct Regulus: Sun reaches ~29°50′ Leo around 22–23 August.
-    const chart = computeChart({ utc: new Date(Date.UTC(2000, 7, 22, 12)) }, provider);
+    const chart = computeChart(
+      { utc: new Date(Date.UTC(2000, 7, 22, 12)) },
+      provider,
+    );
     const contacts = fixedStarContacts(provider, chart);
-    const regulusSun = contacts.find((c) => c.star === "Regulus" && c.point === "sun");
+    const regulusSun = contacts.find(
+      (c) => c.star === "Regulus" && c.point === "sun",
+    );
     expect(regulusSun).toBeDefined();
     expect(regulusSun!.orb).toBeLessThan(1);
   });

@@ -68,8 +68,14 @@ describe("calendar systems", () => {
   });
 
   it("Newton born 25 Dec 1642 (Julian) = 4 Jan 1643 (Gregorian)", () => {
-    const julian = provider.julianDayUt(new Date(Date.UTC(1642, 11, 25)), "julian");
-    const gregorian = provider.julianDayUt(new Date(Date.UTC(1643, 0, 4)), "gregorian");
+    const julian = provider.julianDayUt(
+      new Date(Date.UTC(1642, 11, 25)),
+      "julian",
+    );
+    const gregorian = provider.julianDayUt(
+      new Date(Date.UTC(1643, 0, 4)),
+      "gregorian",
+    );
     expect(julian).toBeCloseTo(gregorian, 9);
   });
 
@@ -92,6 +98,48 @@ describe("calendar systems", () => {
     expect(chart.positions.some((p) => p.body === "sun")).toBe(true);
     expect(chart.positions.some((p) => p.body === "chiron")).toBe(false);
     expect(chart.warnings?.some((w) => w.includes("chiron"))).toBe(true);
+  });
+});
+
+describe("utcFromJulianDay", () => {
+  it("round-trips years below 100 (no 1900 offset)", async () => {
+    const { julianDayUtc, utcFromJulianDay } = await import("../src/index.js");
+    const d = new Date(0);
+    d.setUTCHours(12, 0, 0, 0);
+    d.setUTCFullYear(50, 0, 15);
+    // pre-reform JDs come back in the Julian calendar, so go in as Julian too
+    const back = utcFromJulianDay(julianDayUtc(d, "julian"));
+    expect(back.getUTCFullYear()).toBe(50);
+    expect(Math.abs(back.getTime() - d.getTime())).toBeLessThan(2000);
+  });
+
+  it("includes Lilith in the default bodies", () => {
+    const chart = computeChart(
+      { utc: new Date(Date.UTC(1990, 5, 15, 12)) },
+      provider,
+    );
+    expect(chart.positions.some((p) => p.body === "meanLilith")).toBe(true);
+  });
+
+  it("degrades to a houses-less chart when house calculation fails", () => {
+    const failing = {
+      julianDayUt: provider.julianDayUt.bind(provider),
+      bodyPosition: provider.bodyPosition.bind(provider),
+      ayanamsa: provider.ayanamsa.bind(provider),
+      houses: () => {
+        throw new Error("no cusps at this latitude");
+      },
+    };
+    const chart = computeChart(
+      {
+        utc: new Date(Date.UTC(1990, 5, 15, 12)),
+        location: { latitude: 89, longitude: 0 },
+      },
+      failing,
+    );
+    expect(chart.houses).toBeUndefined();
+    expect(chart.positions.length).toBeGreaterThan(9);
+    expect(chart.warnings?.join(" ")).toMatch(/houses omitted/);
   });
 });
 
@@ -143,8 +191,7 @@ describe("sidereal zodiac", () => {
       type: "sidereal",
       ayanamsa: "lahiri",
     });
-    const diff =
-      (tropical.longitude - sidereal.longitude + 360) % 360;
+    const diff = (tropical.longitude - sidereal.longitude + 360) % 360;
     expect(diff).toBeCloseTo(ayanamsa, 1);
   });
 

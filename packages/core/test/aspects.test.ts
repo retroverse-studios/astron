@@ -4,7 +4,11 @@ import { vargaSign } from "../src/vargas.js";
 import type { BodyPosition } from "../src/types.js";
 import { degreeInSign, signOf } from "../src/zodiac.js";
 
-function at(body: BodyPosition["body"], longitude: number, speed = 1): BodyPosition {
+function at(
+  body: BodyPosition["body"],
+  longitude: number,
+  speed = 1,
+): BodyPosition {
   return {
     body,
     longitude,

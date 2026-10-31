@@ -66,7 +66,11 @@ export function scanElectional(
 
   if (criteria.avoidVoidOfCourse ?? true) {
     // Pad left so a VoC period already underway at the window start is seen.
-    const padded = { from: utcFromJulianDay(jd0 - 3), days: window.days + 3, zodiac };
+    const padded = {
+      from: utcFromJulianDay(jd0 - 3),
+      days: window.days + 3,
+      zodiac,
+    };
     for (const p of scanVoidOfCourse(provider, padded)) {
       blocked.push([p.jdStart, p.jdEnd]);
     }
@@ -74,7 +78,11 @@ export function scanElectional(
 
   for (const body of criteria.avoidRetrograde ?? []) {
     // Stations inside the window plus the state at its edges.
-    const stations = scanStations(provider, { from: window.from, days: window.days, zodiac }, [body]);
+    const stations = scanStations(
+      provider,
+      { from: window.from, days: window.days, zodiac },
+      [body],
+    );
     let cursor = jd0;
     let retro = provider.bodyPosition(jd0, body, zodiac).speed < 0;
     for (const st of stations) {
@@ -87,7 +95,11 @@ export function scanElectional(
 
   if (criteria.moonSigns?.length) {
     const allowed = new Set(criteria.moonSigns);
-    const ingresses = scanIngresses(provider, { from: window.from, days: window.days, zodiac }, ["moon"]);
+    const ingresses = scanIngresses(
+      provider,
+      { from: window.from, days: window.days, zodiac },
+      ["moon"],
+    );
     let cursor = jd0;
     let sign = signOf(provider.bodyPosition(jd0, "moon", zodiac).longitude);
     for (const ing of ingresses) {

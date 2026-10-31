@@ -48,7 +48,9 @@ export function readPlacement(
     position,
     archetype: content.planetArchetypes[position.body],
     sign: content.signLenses[position.sign],
-    house: position.house ? content.houseDomains[position.house - 1] : undefined,
+    house: position.house
+      ? content.houseDomains[position.house - 1]
+      : undefined,
     dignityNotes: dignities(position.body, position.sign, scheme).map(
       (d) => content.dignityNotes[d],
     ),
@@ -83,7 +85,9 @@ export function readChart(
   const content = options.content ?? SHIPPED_CONTENT;
   return {
     placements: chart.positions.map((p) => readPlacement(p, scheme, content)),
-    aspects: chart.aspects.filter((a) => a.orb <= maxOrb).map((a) => readAspect(a, content)),
+    aspects: chart.aspects
+      .filter((a) => a.orb <= maxOrb)
+      .map((a) => readAspect(a, content)),
     disclaimer: INTERPRETATION_DISCLAIMER,
   };
 }

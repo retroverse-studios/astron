@@ -12,5 +12,7 @@ export function loadAtlas(): Atlas {
     "data",
     "cities.tsv.gz",
   );
-  return new Atlas(parseCityTsv(gunzipSync(readFileSync(path)).toString("utf8")));
+  return new Atlas(
+    parseCityTsv(gunzipSync(readFileSync(path)).toString("utf8")),
+  );
 }

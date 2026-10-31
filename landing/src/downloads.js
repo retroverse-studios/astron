@@ -5,10 +5,22 @@
  *   - the #download section shows every platform's pills (detected one highlighted)
  * Direct `browser_download_url` links mean visitors never see the GitHub UI.
  * Falls back gracefully if there is no published release yet.
+ * API values are treated as untrusted: text goes through textContent and
+ * download hrefs must be https on a GitHub host before they are used.
  */
 const REPO = 'retroverse-studios/astron';
 const API_URL = `https://api.github.com/repos/${REPO}/releases/latest`;
-const RELEASES_URL = `https://github.com/${REPO}/releases`;
+
+function safeDownloadUrl(value) {
+  try {
+    const u = new URL(value);
+    if (u.protocol !== 'https:') return null;
+    if (u.hostname !== 'github.com' && !u.hostname.endsWith('.githubusercontent.com')) return null;
+    return u.href;
+  } catch {
+    return null;
+  }
+}
 
 /** Map a release asset filename to a slot in the download matrix. */
 function classifyAsset(name) {
@@ -49,6 +61,15 @@ function formatSize(bytes) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+/** Set the hero note to text + a #download anchor, without innerHTML. */
+function setHeroNote(heroNote, text, linkLabel) {
+  heroNote.textContent = `${text} · `;
+  const a = document.createElement('a');
+  a.href = '#download';
+  a.textContent = linkLabel;
+  heroNote.appendChild(a);
+}
+
 async function populateDownloads() {
   const heroBtn = document.getElementById('heroDownload');
   const heroNote = document.getElementById('heroDlNote');
@@ -63,16 +84,18 @@ async function populateDownloads() {
     release = await response.json();
   } catch {
     versionEl.textContent =
-      'First desktop release coming soon — the browser version is fully featured in the meantime.';
+      'Could not check for the latest desktop release just now — the browser version above is fully featured, or see all releases on GitHub below.';
     return;
   }
 
-  const version = release.tag_name || '';
+  const version = typeof release.tag_name === 'string' ? release.tag_name : '';
   const assets = new Map();
   for (const asset of release.assets || []) {
+    if (!asset || typeof asset.name !== 'string') continue;
     const slot = classifyAsset(asset.name);
-    if (slot && !assets.has(slot)) {
-      assets.set(slot, { url: asset.browser_download_url, size: asset.size });
+    const url = safeDownloadUrl(asset.browser_download_url);
+    if (slot && url && !assets.has(slot)) {
+      assets.set(slot, { url, size: asset.size });
     }
   }
 
@@ -110,13 +133,12 @@ async function populateDownloads() {
     if (slot) {
       heroBtn.href = assets.get(slot).url;
       heroBtn.textContent = `[ ⬇ DOWNLOAD FOR ${PLATFORM_LABEL[platform]} ]`;
-      heroNote.innerHTML =
-        `${version} · direct download · <a href="#download">other platforms ↓</a>`;
+      setHeroNote(heroNote, `${version} · direct download`, 'other platforms ↓');
       return;
     }
   }
   // Unknown platform (or no matching asset): keep the button as an anchor to #download.
-  heroNote.innerHTML = `${version} · <a href="#download">choose your platform ↓</a>`;
+  setHeroNote(heroNote, version, 'choose your platform ↓');
 }
 
 populateDownloads();

@@ -47,7 +47,10 @@ export function fixedStarContacts(
   const stars = options.stars ?? BRIGHT_STARS;
 
   const points: { point: StarContact["point"]; longitude: number }[] = [
-    ...chart.positions.map((p) => ({ point: p.body as StarContact["point"], longitude: p.longitude })),
+    ...chart.positions.map((p) => ({
+      point: p.body as StarContact["point"],
+      longitude: p.longitude,
+    })),
     ...(chart.houses
       ? [
           { point: "asc" as const, longitude: chart.houses.ascendant },
@@ -62,7 +65,12 @@ export function fixedStarContacts(
     for (const { point, longitude } of points) {
       const deviation = Math.abs(norm180(s.longitude - longitude));
       if (deviation <= orb) {
-        contacts.push({ star: s.name, starLongitude: s.longitude, point, orb: deviation });
+        contacts.push({
+          star: s.name,
+          starLongitude: s.longitude,
+          point,
+          orb: deviation,
+        });
       }
     }
   }

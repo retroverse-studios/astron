@@ -57,7 +57,8 @@ export const SIGN_LENSES: Record<Sign, Lensed> = {
   Virgo: {
     light: "precision in service of what actually helps",
     truth: "mutable earth: harvest, discernment, the craft of improvement",
-    shadow: "criticism that arrives before compassion; perfect as enemy of done",
+    shadow:
+      "criticism that arrives before compassion; perfect as enemy of done",
   },
   Libra: {
     light: "grace, fairness, the art of making relationship beautiful",
@@ -109,7 +110,8 @@ export const HOUSE_DOMAINS: string[] = [
 export const ASPECT_LENSES: Record<AspectName, Lensed> = {
   conjunction: {
     light: "fusion — two functions acting as one amplified voice",
-    truth: "no distance: these parts of you cannot see each other, only act together",
+    truth:
+      "no distance: these parts of you cannot see each other, only act together",
     shadow: "a blend so total neither part can be examined or turned off",
   },
   sextile: {
@@ -119,13 +121,15 @@ export const ASPECT_LENSES: Record<AspectName, Lensed> = {
   },
   square: {
     light: "friction that builds engines — the aspect of earned strength",
-    truth: "two agendas at cross-purposes demanding a construction, not a winner",
+    truth:
+      "two agendas at cross-purposes demanding a construction, not a winner",
     shadow: "the same fight rerun until the lesson is finally taken",
   },
   trine: {
     light: "native talent — flow so easy it feels like weather",
     truth: "same-element harmony: support that asks nothing",
-    shadow: "ease gone slack; the talent never sharpened because it never had to be",
+    shadow:
+      "ease gone slack; the talent never sharpened because it never had to be",
   },
   opposition: {
     light: "perspective — the full moon view of your own polarity",
@@ -166,7 +170,8 @@ export const ASPECT_LENSES: Record<AspectName, Lensed> = {
 
 export const DIGNITY_NOTES: Record<Dignity, string> = {
   domicile: "at home — this function speaks its native language here",
-  exaltation: "an honoured guest — welcomed, amplified, occasionally over-praised",
+  exaltation:
+    "an honoured guest — welcomed, amplified, occasionally over-praised",
   detriment: "an away game — more effort, and often more growth for it",
   fall: "a muted register — the function works, quietly and underestimated",
 };

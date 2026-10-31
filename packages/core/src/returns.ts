@@ -1,12 +1,7 @@
 import { computeChart } from "./chart.js";
 import { findCrossings } from "./scan.js";
 import { utcFromJulianDay } from "./time.js";
-import type {
-  Body,
-  Chart,
-  ChartInput,
-  EphemerisProvider,
-} from "./types.js";
+import type { Body, Chart, ChartInput, EphemerisProvider } from "./types.js";
 import { norm180 } from "./zodiac.js";
 
 export interface ReturnOverrides {
@@ -60,7 +55,15 @@ export function solarReturn(
 ): Chart {
   const natalYear = natal.utc.getUTCFullYear();
   const jdGuess = natal.julianDayUt + 365.2422 * (year - natalYear);
-  return returnChart(provider, natal, "sun", jdGuess - 4, jdGuess + 4, 0.75, overrides);
+  return returnChart(
+    provider,
+    natal,
+    "sun",
+    jdGuess - 4,
+    jdGuess + 4,
+    0.75,
+    overrides,
+  );
 }
 
 /**

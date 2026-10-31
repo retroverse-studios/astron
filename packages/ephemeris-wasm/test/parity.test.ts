@@ -23,7 +23,14 @@ describe("WASM ↔ native parity", () => {
 
   it("agrees on tropical positions to well under an arcminute", () => {
     const jd = native.julianDayUt(utc);
-    for (const body of ["sun", "moon", "mercury", "mars", "saturn", "trueNode"] as const) {
+    for (const body of [
+      "sun",
+      "moon",
+      "mercury",
+      "mars",
+      "saturn",
+      "trueNode",
+    ] as const) {
       const a = wasm.bodyPosition(jd, body, { type: "tropical" });
       const b = native.bodyPosition(jd, body, { type: "tropical" });
       expect(Math.abs(a.longitude - b.longitude)).toBeLessThan(0.01);
@@ -33,7 +40,9 @@ describe("WASM ↔ native parity", () => {
 
   it("agrees on the Lahiri ayanamsa to under an arcsecond", () => {
     const jd = native.julianDayUt(utc);
-    const diff = Math.abs(wasm.ayanamsa(jd, "lahiri") - native.ayanamsa(jd, "lahiri"));
+    const diff = Math.abs(
+      wasm.ayanamsa(jd, "lahiri") - native.ayanamsa(jd, "lahiri"),
+    );
     expect(diff).toBeLessThan(1 / 3600);
   });
 
@@ -55,15 +64,25 @@ describe("WASM ↔ native parity", () => {
 
   it("puts sidereal whole-sign cusps on sign boundaries", () => {
     const jd = native.julianDayUt(utc);
-    const houses = wasm.houses(jd, { latitude: 28.61, longitude: 77.2 }, "wholeSign", {
-      type: "sidereal",
-      ayanamsa: "lahiri",
-    });
+    const houses = wasm.houses(
+      jd,
+      { latitude: 28.61, longitude: 77.2 },
+      "wholeSign",
+      {
+        type: "sidereal",
+        ayanamsa: "lahiri",
+      },
+    );
     for (const c of houses.cusps) expect(c % 30).toBeCloseTo(0, 6);
-    const native0 = native.houses(jd, { latitude: 28.61, longitude: 77.2 }, "wholeSign", {
-      type: "sidereal",
-      ayanamsa: "lahiri",
-    });
+    const native0 = native.houses(
+      jd,
+      { latitude: 28.61, longitude: 77.2 },
+      "wholeSign",
+      {
+        type: "sidereal",
+        ayanamsa: "lahiri",
+      },
+    );
     expect(houses.cusps[0]).toBeCloseTo(native0.cusps[0]!, 4);
   });
 

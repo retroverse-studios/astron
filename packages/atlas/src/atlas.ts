@@ -12,28 +12,27 @@ export interface City {
 
 /** Lowercase and strip diacritics so "München" matches "munchen". */
 function normalize(s: string): string {
-  return s
-    .normalize("NFD")
-    .replace(/\p{M}/gu, "")
-    .toLowerCase()
-    .trim();
+  return s.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().trim();
 }
 
 export function parseCityTsv(tsv: string): City[] {
-  return tsv.split("\n").map((line) => {
-    const c = line.split("\t");
-    return {
-      name: c[0]!,
-      alternates: c[1] ? c[1].split("|") : [],
-      latitude: parseFloat(c[2]!),
-      longitude: parseFloat(c[3]!),
-      countryCode: c[4]!,
-      country: c[5]!,
-      admin1: c[6]!,
-      population: parseInt(c[7]!, 10),
-      timezone: c[8]!,
-    };
-  });
+  return tsv
+    .split("\n")
+    .filter((line) => line.trim())
+    .map((line) => {
+      const c = line.split("\t");
+      return {
+        name: c[0]!,
+        alternates: c[1] ? c[1].split("|") : [],
+        latitude: parseFloat(c[2]!),
+        longitude: parseFloat(c[3]!),
+        countryCode: c[4]!,
+        country: c[5]!,
+        admin1: c[6]!,
+        population: parseInt(c[7]!, 10),
+        timezone: c[8]!,
+      };
+    });
 }
 
 /**
@@ -46,9 +45,15 @@ export function parseCityTsv(tsv: string): City[] {
  */
 export class Atlas {
   private cities: City[];
+  // Normalized search text, computed once — search() runs per keystroke.
+  private index: { names: string[]; place: string }[];
 
   constructor(cities: City[]) {
     this.cities = cities;
+    this.index = cities.map((city) => ({
+      names: [city.name, ...city.alternates].map(normalize),
+      place: normalize(`${city.admin1} ${city.country} ${city.countryCode}`),
+    }));
   }
 
   static fromTsv(tsv: string): Atlas {
@@ -60,33 +65,32 @@ export class Atlas {
   }
 
   search(query: string, limit = 8): City[] {
-    const parts = query.split(",").map((p) => normalize(p)).filter(Boolean);
+    const parts = query
+      .split(",")
+      .map((p) => normalize(p))
+      .filter(Boolean);
     if (!parts.length) return [];
     const cityQuery = parts[0]!;
     const qualifiers = parts.slice(1);
 
     const scored: { city: City; score: number }[] = [];
-    for (const city of this.cities) {
-      const names = [city.name, ...city.alternates].map(normalize);
+    for (let i = 0; i < this.cities.length; i++) {
+      const city = this.cities[i]!;
+      const entry = this.index[i]!;
       let score = 0;
-      for (const n of names) {
+      for (const n of entry.names) {
         if (n === cityQuery) score = Math.max(score, 3);
         else if (n.startsWith(cityQuery)) score = Math.max(score, 2);
         else if (n.includes(cityQuery)) score = Math.max(score, 1);
       }
       if (!score) continue;
-
-      const place = normalize(`${city.admin1} ${city.country} ${city.countryCode}`);
-      if (!qualifiers.every((q) => place.includes(q))) continue;
-
+      if (!qualifiers.every((q) => entry.place.includes(q))) continue;
       scored.push({ city, score });
     }
 
     return scored
       .sort(
-        (a, b) =>
-          b.score - a.score ||
-          b.city.population - a.city.population,
+        (a, b) => b.score - a.score || b.city.population - a.city.population,
       )
       .slice(0, limit)
       .map((s) => s.city);

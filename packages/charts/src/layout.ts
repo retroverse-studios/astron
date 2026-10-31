@@ -15,7 +15,12 @@ export function angleForLongitude(longitude: number, rotation: number): number {
   return norm360(180 + (longitude - rotation));
 }
 
-export function polarPoint(cx: number, cy: number, r: number, angleDeg: number): Point {
+export function polarPoint(
+  cx: number,
+  cy: number,
+  r: number,
+  angleDeg: number,
+): Point {
   const a = (angleDeg * Math.PI) / 180;
   return { x: cx + r * Math.cos(a), y: cy - r * Math.sin(a) };
 }

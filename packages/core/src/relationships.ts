@@ -54,10 +54,16 @@ export function synastry(
   return {
     aspects: findCrossAspects(still(a.positions), b.positions, aspectDefs),
     aInBHouses: b.houses
-      ? a.positions.map((p) => ({ body: p.body, house: houseOf(p.longitude, b.houses!) }))
+      ? a.positions.map((p) => ({
+          body: p.body,
+          house: houseOf(p.longitude, b.houses!),
+        }))
       : undefined,
     bInAHouses: a.houses
-      ? b.positions.map((p) => ({ body: p.body, house: houseOf(p.longitude, a.houses!) }))
+      ? b.positions.map((p) => ({
+          body: p.body,
+          house: houseOf(p.longitude, a.houses!),
+        }))
       : undefined,
   };
 }
@@ -193,7 +199,10 @@ export function synastryBouquet(aspects: Aspect[]): BouquetProfile {
 }
 
 /** Great-circle midpoint of two places (undefined behaviour for antipodes). */
-export function geographicMidpoint(a: GeoLocation, b: GeoLocation): GeoLocation {
+export function geographicMidpoint(
+  a: GeoLocation,
+  b: GeoLocation,
+): GeoLocation {
   const rad = Math.PI / 180;
   const vec = (g: GeoLocation) => [
     Math.cos(g.latitude * rad) * Math.cos(g.longitude * rad),
@@ -229,7 +238,9 @@ export function davisonChart(
   assertSameZodiac(a, b);
   const utc = utcFromJulianDay((julianDayUtc(a.utc) + julianDayUtc(b.utc)) / 2);
   const location =
-    a.location && b.location ? geographicMidpoint(a.location, b.location) : undefined;
+    a.location && b.location
+      ? geographicMidpoint(a.location, b.location)
+      : undefined;
   return computeChart(
     {
       utc,

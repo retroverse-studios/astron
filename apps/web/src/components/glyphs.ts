@@ -1,38 +1,4 @@
-import type { Body } from "@astron/core";
-
-export const BODY_NAMES: Record<Body, string> = {
-  sun: "Sun",
-  moon: "Moon",
-  mercury: "Mercury",
-  venus: "Venus",
-  mars: "Mars",
-  jupiter: "Jupiter",
-  saturn: "Saturn",
-  uranus: "Uranus",
-  neptune: "Neptune",
-  pluto: "Pluto",
-  trueNode: "North Node",
-  meanNode: "North Node",
-  chiron: "Chiron",
-  meanLilith: "Lilith",
-};
-
-export const GLYPHS: Record<Body, string> = {
-  sun: "☉",
-  moon: "☽",
-  mercury: "☿",
-  venus: "♀",
-  mars: "♂",
-  jupiter: "♃",
-  saturn: "♄",
-  uranus: "♅",
-  neptune: "♆",
-  pluto: "♇",
-  trueNode: "☊",
-  meanNode: "☊",
-  chiron: "⚷",
-  meanLilith: "⚸",
-};
+export { BODY_GLYPHS as GLYPHS, BODY_NAMES } from "@astron/core";
 
 export const panel = "bg-crt-panel border border-crt-line rounded-lg";
 export const input =

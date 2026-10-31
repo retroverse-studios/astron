@@ -15,7 +15,12 @@
  *   countryCode, countryName, admin1Name, population, ianaTimezone
  */
 import { execSync } from "node:child_process";
-import { createReadStream, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  createReadStream,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createInterface } from "node:readline";
@@ -52,20 +57,27 @@ fetchZip("cities15000.zip");
 fetchFile("admin1CodesASCII.txt");
 fetchFile("countryInfo.txt");
 fetchZip("alternateNamesV2.zip");
-execSync(`cd "${work}" && unzip -o -q cities15000.zip && unzip -o -q alternateNamesV2.zip`);
+execSync(
+  `cd "${work}" && unzip -o -q cities15000.zip && unzip -o -q alternateNamesV2.zip`,
+);
 
 const strip = (s: string) => s.normalize("NFD").replace(/\p{M}/gu, "");
 /** Latin script, possibly with diacritics (München yes, Мюнхен no). */
 const isLatin = (s: string) => /^[A-Za-z .'-]+$/.test(strip(s));
 
 const admin1 = new Map<string, string>();
-for (const line of readFileSync(join(work, "admin1CodesASCII.txt"), "utf8").split("\n")) {
+for (const line of readFileSync(
+  join(work, "admin1CodesASCII.txt"),
+  "utf8",
+).split("\n")) {
   const [code, name] = line.split("\t");
   if (code && name) admin1.set(code, name);
 }
 
 const countries = new Map<string, { name: string; langs: Set<string> }>();
-for (const line of readFileSync(join(work, "countryInfo.txt"), "utf8").split("\n")) {
+for (const line of readFileSync(join(work, "countryInfo.txt"), "utf8").split(
+  "\n",
+)) {
   if (line.startsWith("#")) continue;
   const cols = line.split("\t");
   if (!cols[0] || !cols[4]) continue;
@@ -91,7 +103,9 @@ interface CityRow {
 }
 
 const cities: CityRow[] = [];
-for (const line of readFileSync(join(work, "cities15000.txt"), "utf8").split("\n")) {
+for (const line of readFileSync(join(work, "cities15000.txt"), "utf8").split(
+  "\n",
+)) {
   if (!line) continue;
   const c = line.split("\t");
   cities.push({
@@ -140,7 +154,8 @@ const rows = cities.map((city) => {
     strip(city.asciiName).toLowerCase(),
   ]);
   const alternates: string[] = [];
-  if (city.asciiName && city.asciiName !== city.name) alternates.push(city.asciiName);
+  if (city.asciiName && city.asciiName !== city.name)
+    alternates.push(city.asciiName);
   for (const alt of [
     ...(preferred.get(city.id) ?? []),
     ...(regular.get(city.id) ?? []),
@@ -166,5 +181,8 @@ const rows = cities.map((city) => {
 
 const out = join(import.meta.dirname, "..", "data");
 mkdirSync(out, { recursive: true });
-writeFileSync(join(out, "cities.tsv.gz"), gzipSync(rows.join("\n"), { level: 9 }));
+writeFileSync(
+  join(out, "cities.tsv.gz"),
+  gzipSync(rows.join("\n"), { level: 9 }),
+);
 console.log(`Wrote ${rows.length} cities to data/cities.tsv.gz`);

@@ -77,17 +77,80 @@ describe("renderWheel", () => {
   });
 
   it("adds an outer ring and cross-aspect lines for bi-wheels", () => {
-    const sky = computeChart({ utc: new Date(Date.UTC(2026, 6, 12, 12)) }, provider);
+    const sky = computeChart(
+      { utc: new Date(Date.UTC(2026, 6, 12, 12)) },
+      provider,
+    );
     const svg = renderWheel(chart, {
       outer: {
         positions: sky.positions,
         aspects: [
-          { a: "saturn", b: "sun", name: "square", angle: 90, orb: 1, applying: true },
+          {
+            a: "saturn",
+            b: "sun",
+            name: "square",
+            angle: 90,
+            orb: 1,
+            applying: true,
+          },
         ],
       },
     });
     // two suns now: natal + transiting
     expect(svg.split("☉").length - 1).toBe(2);
     expect(svg).not.toContain("NaN");
+  });
+
+  it("draws cross-aspect lines from outer a to inner b", () => {
+    const sky = computeChart(
+      { utc: new Date(Date.UTC(2026, 6, 12, 12)) },
+      provider,
+    );
+    const svg = renderWheel(chart, {
+      outer: {
+        positions: sky.positions,
+        aspects: [
+          {
+            a: "saturn",
+            b: "sun",
+            name: "square",
+            angle: 90,
+            orb: 1,
+            applying: true,
+          },
+        ],
+      },
+    });
+    const rotation = chart.houses?.ascendant ?? 0;
+    const outerSaturn = sky.positions.find((p) => p.body === "saturn")!;
+    const innerSun = chart.positions.find((p) => p.body === "sun")!;
+    const p1 = polarPoint(
+      320,
+      320,
+      222,
+      angleForLongitude(outerSaturn.longitude, rotation),
+    );
+    const p2 = polarPoint(
+      320,
+      320,
+      164,
+      angleForLongitude(innerSun.longitude, rotation),
+    );
+    const f = (n: number) => (Math.round(n * 100) / 100).toString();
+    expect(svg).toContain(
+      `<line x1="${f(p1.x)}" y1="${f(p1.y)}" x2="${f(p2.x)}" y2="${f(p2.y)}"`,
+    );
+  });
+
+  it("escapes hostile theme values instead of emitting raw markup", () => {
+    const svg = renderWheel(chart, {
+      theme: {
+        background: '"><script>alert(1)</script>',
+        ring: 'x" onload="evil()',
+      },
+    });
+    expect(svg).not.toContain("<script>alert(1)</script>");
+    expect(svg).not.toContain('onload="evil()"');
+    expect(svg).toContain("&quot;");
   });
 });

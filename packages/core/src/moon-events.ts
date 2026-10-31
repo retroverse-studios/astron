@@ -32,7 +32,12 @@ export function scanLunations(
 
   const events: Lunation[] = [];
   for (const [angle, type] of LUNATION_ANGLES) {
-    for (const jd of findCrossings((t) => norm180(phase(t) - angle), jd0, jd1, 0.25)) {
+    for (const jd of findCrossings(
+      (t) => norm180(phase(t) - angle),
+      jd0,
+      jd1,
+      0.25,
+    )) {
       events.push({
         type,
         jd,
@@ -87,15 +92,24 @@ export function scanVoidOfCourse(
   const zodiac = window.zodiac ?? { type: "tropical" };
   const jd0 = provider.julianDayUt(window.from);
   const jd1 = jd0 + window.days;
-  const moonAt = (jd: number) => provider.bodyPosition(jd, "moon", zodiac).longitude;
+  const moonAt = (jd: number) =>
+    provider.bodyPosition(jd, "moon", zodiac).longitude;
 
   // All exact Moon aspects in the window.
   const aspects: { jd: number; body: Body; aspect: AspectName }[] = [];
   for (const body of VOC_ASPECT_BODIES) {
-    const otherAt = (jd: number) => provider.bodyPosition(jd, body, zodiac).longitude;
+    const otherAt = (jd: number) =>
+      provider.bodyPosition(jd, body, zodiac).longitude;
     for (const [angle, name] of MAJOR_ANGLES) {
-      for (const target of angle === 0 || angle === 180 ? [angle] : [angle, -angle]) {
-        for (const jd of findCrossings((t) => norm180(moonAt(t) - otherAt(t) - target), jd0, jd1, 0.25)) {
+      for (const target of angle === 0 || angle === 180
+        ? [angle]
+        : [angle, -angle]) {
+        for (const jd of findCrossings(
+          (t) => norm180(moonAt(t) - otherAt(t) - target),
+          jd0,
+          jd1,
+          0.25,
+        )) {
           aspects.push({ jd, body, aspect: name });
         }
       }
@@ -105,8 +119,11 @@ export function scanVoidOfCourse(
 
   const periods: VoidOfCoursePeriod[] = [];
   let prevIngressJd = -Infinity;
+  let aspectIdx = 0;
   for (const ingress of scanIngresses(provider, window, ["moon"])) {
-    const last = aspects.filter((a) => a.jd < ingress.jd).pop();
+    while (aspectIdx < aspects.length && aspects[aspectIdx]!.jd < ingress.jd)
+      aspectIdx++;
+    const last = aspectIdx > 0 ? aspects[aspectIdx - 1] : undefined;
     const inThisSign = last && last.jd > prevIngressJd;
     prevIngressJd = ingress.jd;
     // No aspect since entering the sign (or the aspect precedes the scan

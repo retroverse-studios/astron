@@ -1,6 +1,7 @@
 // Pure, environment-agnostic API — safe for browsers. The Node-native
 // Swiss Ephemeris provider lives in the "@astron/core/sweph" subpath.
 export * from "./types.js";
+export * from "./bodies.js";
 export * from "./time.js";
 export * from "./zodiac.js";
 export * from "./aspects.js";

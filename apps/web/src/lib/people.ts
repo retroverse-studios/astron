@@ -12,9 +12,28 @@ export interface SavedPerson {
 
 const KEY = "astron.people";
 
+function isSavedPerson(v: unknown): v is SavedPerson {
+  if (!v || typeof v !== "object") return false;
+  const p = v as Record<string, unknown>;
+  const city = p["city"] as Record<string, unknown> | undefined;
+  return (
+    typeof p["id"] === "string" &&
+    typeof p["label"] === "string" &&
+    typeof p["date"] === "string" &&
+    typeof p["time"] === "string" &&
+    !!city &&
+    typeof city === "object" &&
+    Number.isFinite(city["latitude"]) &&
+    Number.isFinite(city["longitude"]) &&
+    typeof city["timezone"] === "string" &&
+    typeof city["name"] === "string"
+  );
+}
+
 function load(): SavedPerson[] {
   try {
-    return JSON.parse(localStorage.getItem(KEY) ?? "[]") as SavedPerson[];
+    const raw: unknown = JSON.parse(localStorage.getItem(KEY) ?? "[]");
+    return Array.isArray(raw) ? raw.filter(isSavedPerson) : [];
   } catch {
     return [];
   }

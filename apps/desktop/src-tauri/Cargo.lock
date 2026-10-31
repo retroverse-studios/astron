@@ -58,9 +58,8 @@ dependencies = [
 
 [[package]]
 name = "astron-desktop"
-version = "0.1.1"
+version = "0.1.5"
 dependencies = [
- "serde_json",
  "tauri",
  "tauri-build",
  "tauri-plugin-dialog",

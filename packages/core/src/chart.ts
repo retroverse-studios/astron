@@ -43,19 +43,27 @@ export function computeChart(
     try {
       positions.push(provider.bodyPosition(jdUt, b, zodiac));
     } catch (err) {
-      warnings.push(`${b} omitted: ${err instanceof Error ? err.message : String(err)}`);
+      warnings.push(
+        `${b} omitted: ${err instanceof Error ? err.message : String(err)}`,
+      );
     }
   }
 
   let houses: HouseData | undefined;
   if (input.location) {
-    houses = provider.houses(
-      jdUt,
-      input.location,
-      input.houseSystem ?? "placidus",
-      zodiac,
-    );
-    for (const p of positions) p.house = houseOf(p.longitude, houses);
+    try {
+      houses = provider.houses(
+        jdUt,
+        input.location,
+        input.houseSystem ?? "placidus",
+        zodiac,
+      );
+      for (const p of positions) p.house = houseOf(p.longitude, houses);
+    } catch (err) {
+      warnings.push(
+        `houses omitted: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
   }
 
   const aspects = findAspects(positions, input.aspectDefs ?? MAJOR_ASPECTS);

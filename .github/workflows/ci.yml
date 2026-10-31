@@ -18,5 +18,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       # the desktop app is a Tauri build (Rust + webkit) — release workflow's job
       - run: pnpm -r --filter '!astron-desktop' build
-      - run: pnpm -r typecheck
+      # package builds already ran tsc; the web app's vite build does not typecheck
+      - run: pnpm --filter @astron/web typecheck
+      - run: pnpm lint
+      - run: pnpm format:check
       - run: pnpm -r test

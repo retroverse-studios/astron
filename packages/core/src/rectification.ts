@@ -44,9 +44,20 @@ export interface RectificationOptions {
 }
 
 /** Evenly spaced candidate instants across a birth-time bracket. */
-export function candidateTimes(startUtc: Date, endUtc: Date, stepMinutes = 8): Date[] {
+export function candidateTimes(
+  startUtc: Date,
+  endUtc: Date,
+  stepMinutes = 8,
+): Date[] {
+  if (!Number.isFinite(stepMinutes) || stepMinutes <= 0) {
+    throw new Error("candidate step must be a positive number of minutes");
+  }
   const out: Date[] = [];
-  for (let t = startUtc.getTime(); t <= endUtc.getTime(); t += stepMinutes * 60000) {
+  for (
+    let t = startUtc.getTime();
+    t <= endUtc.getTime();
+    t += stepMinutes * 60000
+  ) {
     out.push(new Date(t));
   }
   return out;
@@ -71,7 +82,13 @@ export function rectify(
   options: RectificationOptions,
 ): { candidates: RectificationCandidate[]; disclaimer: string } {
   const zodiac = options.zodiac ?? { type: "tropical" };
-  const bodies = options.bodies ?? ["jupiter", "saturn", "uranus", "neptune", "pluto"];
+  const bodies = options.bodies ?? [
+    "jupiter",
+    "saturn",
+    "uranus",
+    "neptune",
+    "pluto",
+  ];
   const angles = options.aspectAngles ?? [0, 90, 180];
   const orb = options.orb ?? 1.5;
 
@@ -80,7 +97,11 @@ export function rectify(
     event,
     positions: bodies.map((body) => ({
       body,
-      longitude: provider.bodyPosition(provider.julianDayUt(event.utc), body, zodiac).longitude,
+      longitude: provider.bodyPosition(
+        provider.julianDayUt(event.utc),
+        body,
+        zodiac,
+      ).longitude,
     })),
   }));
 
@@ -103,11 +124,20 @@ export function rectify(
             const targets =
               aspectAngle === 0 || aspectAngle === 180
                 ? [norm360(angleLon + aspectAngle)]
-                : [norm360(angleLon + aspectAngle), norm360(angleLon - aspectAngle)];
+                : [
+                    norm360(angleLon + aspectAngle),
+                    norm360(angleLon - aspectAngle),
+                  ];
             for (const target of targets) {
               const deviation = Math.abs(norm180(longitude - target));
               if (deviation <= orb) {
-                hits.push({ event, transiting: body, angle: angleName, aspectAngle, orb: deviation });
+                hits.push({
+                  event,
+                  transiting: body,
+                  angle: angleName,
+                  aspectAngle,
+                  orb: deviation,
+                });
                 score += 1 - deviation / orb;
               }
             }
@@ -115,7 +145,13 @@ export function rectify(
         }
       }
     }
-    return { utc, ascendant: houses.ascendant, midheaven: houses.midheaven, score, hits };
+    return {
+      utc,
+      ascendant: houses.ascendant,
+      midheaven: houses.midheaven,
+      score,
+      hits,
+    };
   });
 
   return {

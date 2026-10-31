@@ -10,7 +10,10 @@ const TROPICAL_YEAR_DAYS = 365.2422;
  * ephemeris instant whose sky is read as the progressed chart for
  * `targetUtc`.
  */
-export function secondaryProgressedInstant(natalUtc: Date, targetUtc: Date): Date {
+export function secondaryProgressedInstant(
+  natalUtc: Date,
+  targetUtc: Date,
+): Date {
   const jdNatal = julianDayUtc(natalUtc);
   const yearsElapsed = (julianDayUtc(targetUtc) - jdNatal) / TROPICAL_YEAR_DAYS;
   return utcFromJulianDay(jdNatal + yearsElapsed);

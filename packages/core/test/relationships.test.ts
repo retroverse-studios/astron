@@ -67,7 +67,10 @@ describe("composite", () => {
     for (const p of comp.positions) {
       const a = chartA.positions.find((x) => x.body === p.body)!;
       const b = chartB.positions.find((x) => x.body === p.body)!;
-      expect(p.longitude).toBeCloseTo(circularMidpoint(a.longitude, b.longitude), 9);
+      expect(p.longitude).toBeCloseTo(
+        circularMidpoint(a.longitude, b.longitude),
+        9,
+      );
       expect(p.speed).toBe(0);
     }
   });
@@ -76,7 +79,9 @@ describe("composite", () => {
     const self = compositeChart(chartA, chartA);
     for (const p of self.positions) {
       const orig = chartA.positions.find((x) => x.body === p.body)!;
-      expect(Math.abs(norm180(p.longitude - orig.longitude))).toBeLessThan(1e-9);
+      expect(Math.abs(norm180(p.longitude - orig.longitude))).toBeLessThan(
+        1e-9,
+      );
     }
   });
 
@@ -106,7 +111,9 @@ describe("davison", () => {
     const dav = davisonChart(provider, chartA, chartA);
     for (const p of dav.positions) {
       const orig = chartA.positions.find((x) => x.body === p.body)!;
-      expect(Math.abs(norm180(p.longitude - orig.longitude))).toBeLessThan(1e-6);
+      expect(Math.abs(norm180(p.longitude - orig.longitude))).toBeLessThan(
+        1e-6,
+      );
     }
   });
 

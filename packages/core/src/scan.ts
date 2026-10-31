@@ -26,7 +26,11 @@ export function findCrossings(
   const hits: number[] = [];
   let jdPrev = jdStart;
   let fPrev = f(jdPrev);
-  for (let jd = jdStart + stepDays; jd <= jdEnd + stepDays / 2; jd += stepDays) {
+  for (
+    let jd = jdStart + stepDays;
+    jd <= jdEnd + stepDays / 2;
+    jd += stepDays
+  ) {
     const jdCur = Math.min(jd, jdEnd);
     const fCur = f(jdCur);
     if (fPrev === 0) {
@@ -72,7 +76,7 @@ const STEP_DAYS: Record<Body, number> = {
   meanLilith: 1.5,
 };
 
-const TRANSIT_SCAN_BODIES: Body[] = [
+export const TRANSIT_SCAN_BODIES: Body[] = [
   "sun",
   "mercury",
   "venus",
@@ -130,15 +134,24 @@ export function scanTransits(
 
   const hits: TransitHit[] = [];
   for (const body of bodies) {
-    const lonAt = (jd: number) => provider.bodyPosition(jd, body, zodiac).longitude;
+    const lonAt = (jd: number) =>
+      provider.bodyPosition(jd, body, zodiac).longitude;
     for (const point of natal) {
       for (const def of aspectDefs) {
         const targets =
           def.angle === 0 || def.angle === 180
             ? [norm360(point.longitude + def.angle)]
-            : [norm360(point.longitude + def.angle), norm360(point.longitude - def.angle)];
+            : [
+                norm360(point.longitude + def.angle),
+                norm360(point.longitude - def.angle),
+              ];
         for (const target of targets) {
-          for (const jd of findCrossings((t) => norm180(lonAt(t) - target), jd0, jd1, STEP_DAYS[body])) {
+          for (const jd of findCrossings(
+            (t) => norm180(lonAt(t) - target),
+            jd0,
+            jd1,
+            STEP_DAYS[body],
+          )) {
             hits.push({
               transiting: body,
               natal: point.body,
@@ -168,14 +181,25 @@ export interface StationEvent {
 export function scanStations(
   provider: EphemerisProvider,
   window: ScanWindow,
-  bodies: Body[] = ["mercury", "venus", "mars", "jupiter", "saturn", "uranus", "neptune", "pluto", "chiron"],
+  bodies: Body[] = [
+    "mercury",
+    "venus",
+    "mars",
+    "jupiter",
+    "saturn",
+    "uranus",
+    "neptune",
+    "pluto",
+    "chiron",
+  ],
 ): StationEvent[] {
   const zodiac = window.zodiac ?? { type: "tropical" };
   const jd0 = provider.julianDayUt(window.from);
   const jd1 = jd0 + window.days;
   const events: StationEvent[] = [];
   for (const body of bodies) {
-    const speedAt = (jd: number) => provider.bodyPosition(jd, body, zodiac).speed;
+    const speedAt = (jd: number) =>
+      provider.bodyPosition(jd, body, zodiac).speed;
     // speed is not circular, but findCrossings' wrap guard never triggers
     // on values this small, so it doubles as a plain root finder.
     for (const jd of findCrossings(speedAt, jd0, jd1, STEP_DAYS[body])) {
@@ -205,16 +229,30 @@ export interface IngressEvent {
 export function scanIngresses(
   provider: EphemerisProvider,
   window: ScanWindow,
-  bodies: Body[] = ["sun", "moon", "mercury", "venus", "mars", "jupiter", "saturn"],
+  bodies: Body[] = [
+    "sun",
+    "moon",
+    "mercury",
+    "venus",
+    "mars",
+    "jupiter",
+    "saturn",
+  ],
 ): IngressEvent[] {
   const zodiac = window.zodiac ?? { type: "tropical" };
   const jd0 = provider.julianDayUt(window.from);
   const jd1 = jd0 + window.days;
   const events: IngressEvent[] = [];
   for (const body of bodies) {
-    const lonAt = (jd: number) => provider.bodyPosition(jd, body, zodiac).longitude;
+    const lonAt = (jd: number) =>
+      provider.bodyPosition(jd, body, zodiac).longitude;
     for (const boundary of SIGNS.map((_, i) => i * 30)) {
-      for (const jd of findCrossings((t) => norm180(lonAt(t) - boundary), jd0, jd1, STEP_DAYS[body])) {
+      for (const jd of findCrossings(
+        (t) => norm180(lonAt(t) - boundary),
+        jd0,
+        jd1,
+        STEP_DAYS[body],
+      )) {
         const after = provider.bodyPosition(jd + 1e-3, body, zodiac);
         events.push({
           body,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatCity } from "../src/atlas.js";
+import { formatCity, parseCityTsv } from "../src/atlas.js";
 import { loadAtlas } from "../src/node.js";
 import { formatOffset, lmtOffsetMinutes, localToUtc } from "../src/time.js";
 
@@ -87,7 +87,9 @@ describe("time resolution", () => {
 
   it("honours an explicit timeStandard override", () => {
     const ulm = atlas.bestMatch("Ulm, Germany")!;
-    const iana = localToUtc("1879-03-14", "11:30", ulm, { timeStandard: "iana" });
+    const iana = localToUtc("1879-03-14", "11:30", ulm, {
+      timeStandard: "iana",
+    });
     expect(iana.method).toBe("iana");
     // Berlin mean time +0:53:28 → 10:36:32 UT (the wrong-city trap).
     expect(iana.utc.toISOString().slice(0, 16)).toBe("1879-03-14T10:36");
@@ -98,5 +100,13 @@ describe("time resolution", () => {
     expect(lmtOffsetMinutes(-122.42)).toBeCloseTo(-489.68);
     expect(formatOffset(40)).toBe("+0:40");
     expect(formatOffset(-489.68)).toBe("-8:09:41");
+    // rounding must never produce ":60" seconds
+    expect(formatOffset(61.999)).toBe("+1:02");
+  });
+
+  it("parseCityTsv skips blank lines", () => {
+    const cities = parseCityTsv("A\t\t1\t2\tXX\tXland\t\t10\tUTC\n\n");
+    expect(cities).toHaveLength(1);
+    expect(cities[0]!.name).toBe("A");
   });
 });

@@ -28,7 +28,11 @@ export function utcFromJulianDay(jd: number): Date {
   const month = e < 14 ? e - 1 : e - 13;
   const year = month > 2 ? c - 4716 : c - 4715;
   const ms = Math.round((dayWithFraction - day) * 86400000);
-  return new Date(Date.UTC(year, month - 1, day) + ms);
+  // Date.UTC maps years 0–99 to 1900–1999; setUTCFullYear does not.
+  const date = new Date(0);
+  date.setUTCHours(0, 0, 0, 0);
+  date.setUTCFullYear(year, month - 1, day);
+  return new Date(date.getTime() + ms);
 }
 
 export function julianDayUtc(

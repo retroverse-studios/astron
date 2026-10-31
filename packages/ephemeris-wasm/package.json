@@ -1,9 +1,10 @@
 {
   "name": "@astron/ephemeris-wasm",
   "version": "0.1.0",
-  "description": "ASTRON EphemerisProvider backed by the Swiss Ephemeris WebAssembly build — runs in browsers (and Node).",
+  "description": "ASTRON EphemerisProvider backed by the Swiss Ephemeris WebAssembly build \u2014 runs in browsers (and Node).",
   "license": "AGPL-3.0-only",
   "type": "module",
+  "sideEffects": false,
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -12,7 +13,9 @@
       "default": "./dist/index.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "vitest run",
@@ -24,6 +27,6 @@
   },
   "devDependencies": {
     "typescript": "^5.7.0",
-    "vitest": "^2.1.9"
+    "vitest": "^5.0.5"
   }
 }

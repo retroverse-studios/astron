@@ -12,17 +12,29 @@ import { SwephProvider } from "../src/ephemeris/sweph-provider.js";
 
 const provider = new SwephProvider();
 
+describe("candidateTimes", () => {
+  it("rejects a non-positive step instead of looping forever", () => {
+    const t = new Date(Date.UTC(1990, 0, 1));
+    expect(() => candidateTimes(t, t, 0)).toThrow(/step/);
+    expect(() => candidateTimes(t, t, Number.NaN)).toThrow(/step/);
+  });
+});
+
 describe("electional search", () => {
   const window = { from: new Date(Date.UTC(2026, 0, 1)), days: 10 };
 
   it("windows avoiding void-of-course Moon never overlap a VoC period", () => {
     const good = scanElectional(provider, window, { avoidVoidOfCourse: true });
     expect(good.length).toBeGreaterThan(1);
-    const voc = scanVoidOfCourse(provider, { from: new Date(Date.UTC(2025, 11, 29)), days: 13 });
+    const voc = scanVoidOfCourse(provider, {
+      from: new Date(Date.UTC(2025, 11, 29)),
+      days: 13,
+    });
     for (const w of good) {
       for (const p of voc) {
         const overlap =
-          w.start.getTime() < p.end.getTime() && p.start.getTime() < w.end.getTime();
+          w.start.getTime() < p.end.getTime() &&
+          p.start.getTime() < w.end.getTime();
         expect(overlap).toBe(false);
       }
     }
@@ -35,7 +47,9 @@ describe("electional search", () => {
       avoidRetrograde: ["mercury"],
     });
     // Mercury was retrograde 23 Aug – 15 Sep: nothing allowed in between.
-    const [stationRx, stationD] = scanStations(provider, retroWindow, ["mercury"]);
+    const [stationRx, stationD] = scanStations(provider, retroWindow, [
+      "mercury",
+    ]);
     for (const w of good) {
       const insideRetro =
         w.start.getTime() >= stationRx!.utc.getTime() &&
@@ -51,7 +65,9 @@ describe("electional search", () => {
     });
     for (const w of good) {
       const mid = new Date((w.start.getTime() + w.end.getTime()) / 2);
-      const moon = provider.bodyPosition(provider.julianDayUt(mid), "moon", { type: "tropical" });
+      const moon = provider.bodyPosition(provider.julianDayUt(mid), "moon", {
+        type: "tropical",
+      });
       expect(moon.sign).toBe("Taurus");
     }
   });
@@ -67,7 +83,9 @@ describe("rectification", () => {
 
     // Manufacture "life events": moments when transiting Saturn/Jupiter hit
     // the true ascendant by conjunction/square/opposition.
-    const pseudoAscPoint = [{ ...natal.positions[0]!, body: "sun" as const, longitude: asc }];
+    const pseudoAscPoint = [
+      { ...natal.positions[0]!, body: "sun" as const, longitude: asc },
+    ];
     const hits = scanTransits(
       provider,
       pseudoAscPoint,

@@ -71,9 +71,9 @@ export function localToUtc(
 /** Format an offset like +0:40 or -7:52:30. */
 export function formatOffset(minutes: number): string {
   const sign = minutes < 0 ? "-" : "+";
-  const abs = Math.abs(minutes);
-  const h = Math.floor(abs / 60);
-  const m = Math.floor(abs % 60);
-  const s = Math.round((abs - Math.floor(abs)) * 60);
+  const totalSeconds = Math.round(Math.abs(minutes) * 60);
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
   return `${sign}${h}:${String(m).padStart(2, "0")}${s ? `:${String(s).padStart(2, "0")}` : ""}`;
 }

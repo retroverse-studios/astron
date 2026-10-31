@@ -4,7 +4,7 @@ Decisions made at kick-off (July 2026):
 
 - **Ephemeris**: Swiss Ephemeris (`sweph` native binding now; WASM build for the
   browser in Phase 3). Consequence: project is **AGPL-3.0**.
-- **Zodiacs**: tropical *and* sidereal/Vedic first-class from day one.
+- **Zodiacs**: tropical _and_ sidereal/Vedic first-class from day one.
 - **Targets**: CLI → Web → Tauri desktop (macOS/Windows/Linux), sharing one
   TypeScript core, mirroring the NUMERON monorepo pattern.
 
@@ -44,7 +44,7 @@ The classic source of wrong charts. Owned by `packages/atlas`:
 - [x] **LMT mode**: pre-standard-time offsets are detected by their seconds
       component (Berlin +0:53:28) and replaced with Local Mean Time from the
       place's own longitude; `--time-standard iana|lmt` overrides. Known
-      limitation: seconds-precision *standard* times (Amsterdam +0:19:32,
+      limitation: seconds-precision _standard_ times (Amsterdam +0:19:32,
       1835–1937) are treated as LMT — within ~2 minutes for that zone anyway.
 - [x] Julian calendar toggle (`--julian`, `ChartInput.calendar`) for
       pre-reform dates, always resolved as LMT
@@ -92,7 +92,7 @@ of a circular signed function, wrap-guarded, refined by bisection to ~1s.
 - [x] Solar & lunar returns (`solarReturn`/`lunarReturn`) — return charts in
       the natal zodiac, relocatable. CLI: `astron return solar|lunar`.
 - [x] Secondary progressions + solar arc directions. CLI: `astron progressed
-      [--solar-arc]`. Progressed houses = progressed instant at natal place
+[--solar-arc]`. Progressed houses = progressed instant at natal place
       (one convention of several; labelled as such).
 - [x] `astron ephemeris [--from --days -z]` — merged sky-events calendar.
 - Deferred: ephemeris/calendar view in the web app; transit scanning UI.
@@ -139,6 +139,7 @@ of a circular signed function, wrap-guarded, refined by bisection to ~1s.
 - [x] Part of Spirit (sect-reversed twin of Fortune)
 - [x] CI: test workflow on push; tauri-action release workflow on v* tags
       (macOS arm64+x64, Linux, Windows; unsigned drafts — signing later)
+
 ### Phase 7b ✅ (electional, rectification, UI parity)
 
 - [x] Electional search (`scanElectional`): interval algebra over the

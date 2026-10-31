@@ -1,5 +1,7 @@
 import { LIGHT_THEME, renderWheel } from "@astron/charts";
 import {
+  BODY_GLYPHS,
+  BODY_NAMES,
   dignities,
   formatLongitude,
   isDayChart,
@@ -9,17 +11,20 @@ import {
   type RulershipScheme,
   type StarContact,
 } from "@astron/core";
-import { readChart } from "@astron/interpret";
+import { readChart, type ContentSet } from "@astron/interpret";
 
 const esc = (s: string): string =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 const BODY_LABELS: Record<string, string> = {
-  sun: "Sun ☉", moon: "Moon ☽", mercury: "Mercury ☿", venus: "Venus ♀",
-  mars: "Mars ♂", jupiter: "Jupiter ♃", saturn: "Saturn ♄", uranus: "Uranus ♅",
-  neptune: "Neptune ♆", pluto: "Pluto ♇", trueNode: "North Node ☊",
-  meanNode: "North Node ☊", chiron: "Chiron ⚷", meanLilith: "Lilith ⚸",
-  asc: "Ascendant", mc: "Midheaven",
+  ...Object.fromEntries(
+    Object.keys(BODY_NAMES).map((b) => [
+      b,
+      `${BODY_NAMES[b as keyof typeof BODY_NAMES]} ${BODY_GLYPHS[b as keyof typeof BODY_GLYPHS]}`,
+    ]),
+  ),
+  asc: "Ascendant",
+  mc: "Midheaven",
 };
 
 /**
@@ -32,8 +37,9 @@ export function renderReport(
   meta: { title: string; subtitle: string },
   scheme: RulershipScheme,
   starContacts: StarContact[],
+  content?: ContentSet,
 ): string {
-  const reading = readChart(chart, scheme);
+  const reading = readChart(chart, scheme, { content });
   const pof = partOfFortune(chart);
   const pos = partOfSpirit(chart);
   const sun = chart.positions.find((p) => p.body === "sun");
@@ -130,8 +136,12 @@ export function renderReport(
 <div class="wheel">${renderWheel(chart, { theme: { ...LIGHT_THEME, background: "none" } })}</div>
 <h2>Placements</h2>
 <table>${placementRows}
-${chart.houses ? `<tr><td>Ascendant</td><td>${formatLongitude(chart.houses.ascendant)}</td><td colspan="3"></td></tr>
-<tr><td>Midheaven</td><td>${formatLongitude(chart.houses.midheaven)}</td><td colspan="3"></td></tr>` : ""}
+${
+  chart.houses
+    ? `<tr><td>Ascendant</td><td>${formatLongitude(chart.houses.ascendant)}</td><td colspan="3"></td></tr>
+<tr><td>Midheaven</td><td>${formatLongitude(chart.houses.midheaven)}</td><td colspan="3"></td></tr>`
+    : ""
+}
 ${pof !== undefined ? `<tr><td>Part of Fortune ⊗</td><td>${formatLongitude(pof)}</td><td colspan="3"></td></tr>` : ""}
 ${pos !== undefined ? `<tr><td>Part of Spirit</td><td>${formatLongitude(pos)}</td><td colspan="3"></td></tr>` : ""}
 </table>

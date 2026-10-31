@@ -9,6 +9,8 @@ import {
 import { loadAtlas } from "@astron/atlas/node";
 import {
   antardashas,
+  BODY_GLYPHS,
+  BODY_NAMES,
   candidateTimes,
   rectify,
   scanElectional,
@@ -19,6 +21,7 @@ import {
   dignities,
   harmonicChart,
   partOfSpirit,
+  SIGNS,
   synastry,
   synastryBouquet,
   vimshottariDashas,
@@ -48,7 +51,6 @@ import {
   type GeoLocation,
   type HouseSystem,
   type RulershipScheme,
-  type Sign,
   type TransitHit,
   type Varga,
 } from "@astron/core";
@@ -68,43 +70,49 @@ import {
 } from "@astron/interpret";
 import { LIGHT_THEME, renderBouquet, renderWheel } from "@astron/charts";
 import { renderReport } from "./report.js";
+import {
+  parseChoice,
+  parseDateAt,
+  parseIntInRange,
+  parseLatitude,
+  parseList,
+  parseLongitude,
+} from "./validate.js";
 import { Command } from "commander";
 import { DateTime } from "luxon";
 import { readFileSync, writeFileSync } from "node:fs";
 
-const BODY_GLYPHS: Record<Body, string> = {
-  sun: "☉",
-  moon: "☽",
-  mercury: "☿",
-  venus: "♀",
-  mars: "♂",
-  jupiter: "♃",
-  saturn: "♄",
-  uranus: "♅",
-  neptune: "♆",
-  pluto: "♇",
-  trueNode: "☊",
-  meanNode: "☊",
-  chiron: "⚷",
-  meanLilith: "⚸",
-};
+const ALL_BODIES = Object.keys(BODY_NAMES) as Body[];
+const HOUSE_SYSTEMS = [
+  "placidus",
+  "wholeSign",
+  "equal",
+  "koch",
+  "campanus",
+  "regiomontanus",
+  "porphyry",
+] as const satisfies readonly HouseSystem[];
+const AYANAMSAS = [
+  "lahiri",
+  "raman",
+  "krishnamurti",
+  "faganBradley",
+] as const satisfies readonly Ayanamsa[];
+const VARGAS = [
+  "d1",
+  "d2",
+  "d3",
+  "d7",
+  "d9",
+  "d10",
+  "d12",
+  "d30",
+  "d60",
+] as const satisfies readonly Varga[];
 
-const BODY_NAMES: Record<Body, string> = {
-  sun: "Sun",
-  moon: "Moon",
-  mercury: "Mercury",
-  venus: "Venus",
-  mars: "Mars",
-  jupiter: "Jupiter",
-  saturn: "Saturn",
-  uranus: "Uranus",
-  neptune: "Neptune",
-  pluto: "Pluto",
-  trueNode: "North Node",
-  meanNode: "North Node (mean)",
-  chiron: "Chiron",
-  meanLilith: "Lilith (mean)",
-};
+function parseVarga(value: string): Varga {
+  return parseChoice(value.toLowerCase(), "--varga", VARGAS);
+}
 
 interface CommonOpts {
   time?: string;
@@ -130,7 +138,10 @@ interface CommonOpts {
   report?: string;
 }
 
-function loadContent(opts: CommonOpts): { content?: ContentSet; note?: string } {
+function loadContent(opts: CommonOpts): {
+  content?: ContentSet;
+  note?: string;
+} {
   if (!opts.content) return {};
   const overrides = parseOverrides(readFileSync(opts.content, "utf8"));
   return { content: mergeContent(overrides), note: overridesNote(overrides) };
@@ -150,29 +161,55 @@ function readMode(opts: CommonOpts): ReadMode | undefined {
 function printFluentReading(chart: Chart, content?: ContentSet): void {
   console.log("\n  THE READING (built-in fluent set)");
   for (const p of chart.positions) {
-    console.log(`\n  ${BODY_GLYPHS[p.body]} ${BODY_NAMES[p.body]} in ${p.sign}${p.house ? `, house ${p.house}` : ""}`);
+    console.log(
+      `\n  ${BODY_GLYPHS[p.body]} ${BODY_NAMES[p.body]} in ${p.sign}${p.house ? `, house ${p.house}` : ""}`,
+    );
     console.log(`  ${fluentPlacement(p.body, p.sign, p.house, content)}`);
   }
   console.log(`\n  ${FLUENT_PROVENANCE}`);
   console.log(`\n  ${INTERPRETATION_DISCLAIMER}`);
 }
 
-async function printAiReading(chart: Chart, scheme: RulershipScheme, opts: CommonOpts): Promise<void> {
+async function printAiReading(
+  chart: Chart,
+  scheme: RulershipScheme,
+  opts: CommonOpts,
+): Promise<void> {
   const apiKey = process.env["ANTHROPIC_API_KEY"];
-  if (!apiKey) fail("--read ai needs ANTHROPIC_API_KEY in the environment (your own key; ASTRON has no server)");
-  console.log("\n  (calling Anthropic with your key — this is the one mode where chart data leaves your machine)");
-  const result = await aiReading(chart, scheme, { apiKey, model: opts.aiModel, voice: opts.aiVoice });
+  if (!apiKey)
+    fail(
+      "--read ai needs ANTHROPIC_API_KEY in the environment (your own key; ASTRON has no server)",
+    );
+  console.log(
+    "\n  (calling Anthropic with your key — this is the one mode where chart data leaves your machine)",
+  );
+  const result = await aiReading(chart, scheme, {
+    apiKey,
+    model: opts.aiModel,
+    voice: opts.aiVoice,
+  });
   console.log(`\n  THE READING (AI, live)\n`);
-  console.log(result.text.split("\n").map((l) => `  ${l}`).join("\n"));
+  console.log(
+    result.text
+      .split("\n")
+      .map((l) => `  ${l}`)
+      .join("\n"),
+  );
   console.log(`\n  ${result.provenance}`);
 }
 
-function printReading(chart: Chart, scheme: RulershipScheme, content?: ContentSet): void {
+function printReading(
+  chart: Chart,
+  scheme: RulershipScheme,
+  content?: ContentSet,
+): void {
   const reading = readChart(chart, scheme, { content });
   console.log("\n  THE READING, IN PARTS");
   for (const r of reading.placements) {
     const where = `${r.position.sign}${r.position.house ? `, house ${r.position.house}` : ""}`;
-    console.log(`\n  ${BODY_GLYPHS[r.position.body]} ${BODY_NAMES[r.position.body]} in ${where}`);
+    console.log(
+      `\n  ${BODY_GLYPHS[r.position.body]} ${BODY_NAMES[r.position.body]} in ${where}`,
+    );
     console.log(`     the planet  ${r.archetype}`);
     console.log(`     light       ${r.sign.light}`);
     console.log(`     truth       ${r.sign.truth}`);
@@ -182,7 +219,9 @@ function printReading(chart: Chart, scheme: RulershipScheme, content?: ContentSe
   }
   console.log("\n  ASPECT READINGS (orb ≤ 4°)");
   for (const r of reading.aspects) {
-    console.log(`\n  ${BODY_GLYPHS[r.aspect.a]}–${BODY_GLYPHS[r.aspect.b]} ${BODY_NAMES[r.aspect.a]} ${r.aspect.name} ${BODY_NAMES[r.aspect.b]}`);
+    console.log(
+      `\n  ${BODY_GLYPHS[r.aspect.a]}–${BODY_GLYPHS[r.aspect.b]} ${BODY_NAMES[r.aspect.a]} ${r.aspect.name} ${BODY_NAMES[r.aspect.b]}`,
+    );
     console.log(`     pairing     ${r.pairing}`);
     console.log(`     light       ${r.lenses.light}`);
     console.log(`     truth       ${r.lenses.truth}`);
@@ -199,8 +238,15 @@ function printStars(chart: Chart, provider: SwephProvider): void {
     return;
   }
   for (const c of contacts) {
-    const point = c.point === "asc" ? "Ascendant" : c.point === "mc" ? "Midheaven" : BODY_NAMES[c.point];
-    console.log(`  ${c.star.padEnd(12)} ${formatLongitude(c.starLongitude).padEnd(19)} conjunct ${point}  orb ${c.orb.toFixed(2)}°`);
+    const point =
+      c.point === "asc"
+        ? "Ascendant"
+        : c.point === "mc"
+          ? "Midheaven"
+          : BODY_NAMES[c.point];
+    console.log(
+      `  ${c.star.padEnd(12)} ${formatLongitude(c.starLongitude).padEnd(19)} conjunct ${point}  orb ${c.orb.toFixed(2)}°`,
+    );
   }
 }
 
@@ -246,8 +292,8 @@ function resolveMoment(dateStr: string, opts: CommonOpts): ResolvedMoment {
   let zone = opts.zone;
   if (opts.lat !== undefined && opts.lon !== undefined) {
     location = {
-      latitude: parseFloat(opts.lat),
-      longitude: parseFloat(opts.lon),
+      latitude: parseLatitude(opts.lat),
+      longitude: parseLongitude(opts.lon),
       name: opts.place,
     };
   } else if (opts.place) {
@@ -314,9 +360,13 @@ function resolveMoment(dateStr: string, opts: CommonOpts): ResolvedMoment {
 function buildInput(moment: ResolvedMoment, opts: CommonOpts): ChartInput {
   if (!opts.json) {
     if (!moment.location) {
-      console.log("(no place given: computing a planets-only chart, no houses)\n");
+      console.log(
+        "(no place given: computing a planets-only chart, no houses)\n",
+      );
     } else if (moment.noTime) {
-      console.log("(no --time given: using noon, houses omitted — treat Moon degree as ±6°)\n");
+      console.log(
+        "(no --time given: using noon, houses omitted — treat Moon degree as ±6°)\n",
+      );
     }
     if (moment.timeNote) console.log(`(${moment.timeNote})\n`);
   }
@@ -328,10 +378,13 @@ function buildInput(moment: ResolvedMoment, opts: CommonOpts): ChartInput {
     zodiac: sidereal
       ? {
           type: "sidereal",
-          ayanamsa: (typeof sidereal === "string" ? sidereal : "lahiri") as Ayanamsa,
+          ayanamsa:
+            typeof sidereal === "string"
+              ? parseChoice(sidereal, "--sidereal", AYANAMSAS)
+              : "lahiri",
         }
       : { type: "tropical" },
-    houseSystem: opts.houses as HouseSystem,
+    houseSystem: parseChoice(opts.houses, "--houses", HOUSE_SYSTEMS),
     aspectDefs: opts.minorAspects
       ? [...MAJOR_ASPECTS, ...MINOR_ASPECTS]
       : undefined,
@@ -343,7 +396,11 @@ function schemeFor(chart: Chart): RulershipScheme {
   return chart.zodiac.type === "sidereal" ? "traditional" : "modern";
 }
 
-function chartToJson(chart: Chart, opts: CommonOpts, moment?: ResolvedMoment): object {
+function chartToJson(
+  chart: Chart,
+  opts: CommonOpts,
+  moment?: ResolvedMoment,
+): object {
   const scheme = schemeFor(chart);
   return {
     ...chart,
@@ -352,7 +409,12 @@ function chartToJson(chart: Chart, opts: CommonOpts, moment?: ResolvedMoment): o
       formatted: formatLongitude(p.longitude),
       dignities: dignities(p.body, p.sign, scheme),
       ...(opts.varga
-        ? { [opts.varga.toLowerCase()]: vargaSign(p.longitude, opts.varga.toLowerCase() as Varga) }
+        ? {
+            [opts.varga.toLowerCase()]: vargaSign(
+              p.longitude,
+              parseVarga(opts.varga),
+            ),
+          }
         : {}),
     })),
     partOfFortune: partOfFortune(chart),
@@ -381,9 +443,13 @@ function printHeader(chart: Chart, moment: ResolvedMoment): void {
   );
   if (moment.location) {
     const { latitude, longitude, name } = moment.location;
-    console.log(`  ${name ?? "location"}: ${latitude.toFixed(2)}°, ${longitude.toFixed(2)}°`);
+    console.log(
+      `  ${name ?? "location"}: ${latitude.toFixed(2)}°, ${longitude.toFixed(2)}°`,
+    );
   }
-  console.log(`  Zodiac: ${zodiacLabel}${chart.houses ? `   Houses: ${chart.houses.system}` : ""}`);
+  console.log(
+    `  Zodiac: ${zodiacLabel}${chart.houses ? `   Houses: ${chart.houses.system}` : ""}`,
+  );
   console.log("═".repeat(64));
 }
 
@@ -393,7 +459,9 @@ function printPositions(chart: Chart): void {
   for (const p of chart.positions) {
     const name = BODY_NAMES[p.body].padEnd(18);
     const pos = formatLongitude(p.longitude).padEnd(19);
-    const house = (p.house ? `house ${String(p.house).padStart(2)}` : "").padEnd(10);
+    const house = (
+      p.house ? `house ${String(p.house).padStart(2)}` : ""
+    ).padEnd(10);
     const rx = p.retrograde ? "℞ " : "  ";
     const dig = dignities(p.body, p.sign, scheme).join(", ");
     console.log(`  ${BODY_GLYPHS[p.body]}  ${name}${pos}${house}${rx}${dig}`);
@@ -403,13 +471,19 @@ function printPositions(chart: Chart): void {
 function printAnglesAndLots(chart: Chart): void {
   if (!chart.houses) return;
   console.log("\n  ANGLES & HOUSES");
-  console.log(`  ASC ${formatLongitude(chart.houses.ascendant).padEnd(20)}MC ${formatLongitude(chart.houses.midheaven)}`);
+  console.log(
+    `  ASC ${formatLongitude(chart.houses.ascendant).padEnd(20)}MC ${formatLongitude(chart.houses.midheaven)}`,
+  );
   const pof = partOfFortune(chart);
   const pos = partOfSpirit(chart);
   if (pof !== undefined) {
     const sun = chart.positions.find((p) => p.body === "sun")!;
-    const sect = isDayChart(sun.longitude, chart.houses.ascendant) ? "day" : "night";
-    console.log(`  ⊗   Part of Fortune ${formatLongitude(pof)}  (${sect} chart)`);
+    const sect = isDayChart(sun.longitude, chart.houses.ascendant)
+      ? "day"
+      : "night";
+    console.log(
+      `  ⊗   Part of Fortune ${formatLongitude(pof)}  (${sect} chart)`,
+    );
   }
   if (pos !== undefined) {
     console.log(`  ⊙̸   Part of Spirit  ${formatLongitude(pos)}`);
@@ -422,21 +496,31 @@ function printAnglesAndLots(chart: Chart): void {
   }
 }
 
-function printAspects(aspects: Aspect[], title = "ASPECTS", showApplying = true): void {
+function printAspects(
+  aspects: Aspect[],
+  title = "ASPECTS",
+  showApplying = true,
+): void {
   if (!aspects.length) return;
   console.log(`\n  ${title}`);
   for (const a of aspects) {
     const label = `${BODY_NAMES[a.a]} ${a.name} ${BODY_NAMES[a.b]}`.padEnd(36);
-    const motion = showApplying ? `  ${a.applying ? "applying" : "separating"}` : "";
-    console.log(`  ${BODY_GLYPHS[a.a]}–${BODY_GLYPHS[a.b]}  ${label}orb ${a.orb.toFixed(1)}°${motion}`);
+    const motion = showApplying
+      ? `  ${a.applying ? "applying" : "separating"}`
+      : "";
+    console.log(
+      `  ${BODY_GLYPHS[a.a]}–${BODY_GLYPHS[a.b]}  ${label}orb ${a.orb.toFixed(1)}°${motion}`,
+    );
   }
 }
 
 function printVarga(chart: Chart, vargaOpt: string): void {
-  const varga = vargaOpt.toLowerCase() as Varga;
+  const varga = parseVarga(vargaOpt);
   console.log(`\n  VARGA ${varga.toUpperCase()}`);
   for (const p of chart.positions) {
-    console.log(`  ${BODY_GLYPHS[p.body]}  ${BODY_NAMES[p.body].padEnd(18)}${vargaSign(p.longitude, varga)}`);
+    console.log(
+      `  ${BODY_GLYPHS[p.body]}  ${BODY_NAMES[p.body].padEnd(18)}${vargaSign(p.longitude, varga)}`,
+    );
   }
 }
 
@@ -453,11 +537,13 @@ function printChart(
   printAspects(chart.aspects, "ASPECTS", showApplying);
   if (opts.varga) printVarga(chart, opts.varga);
   if (opts.harmonic) {
-    const n = parseInt(opts.harmonic, 10);
+    const n = parseIntInRange(opts.harmonic, "--harmonic", 1, 360);
     const h = harmonicChart(chart, n);
     console.log(`\n  HARMONIC ${n}`);
     for (const p of h.positions) {
-      console.log(`  ${BODY_GLYPHS[p.body]}  ${BODY_NAMES[p.body].padEnd(18)}${formatLongitude(p.longitude)}`);
+      console.log(
+        `  ${BODY_GLYPHS[p.body]}  ${BODY_NAMES[p.body].padEnd(18)}${formatLongitude(p.longitude)}`,
+      );
     }
   }
   console.log();
@@ -468,26 +554,58 @@ function addCommonOptions(cmd: Command): Command {
     .option("-t, --time <HH:MM>", "local clock time of birth/event")
     .option("-z, --zone <iana>", "IANA time zone (default: the place's zone)")
     .option("-p, --place <query>", 'place lookup, e.g. "Perth" or "Perth, UK"')
-    .option("--lat <deg>", "latitude, degrees north-positive (overrides --place coords)")
+    .option(
+      "--lat <deg>",
+      "latitude, degrees north-positive (overrides --place coords)",
+    )
     .option("--lon <deg>", "longitude, degrees east-positive")
-    .option("--houses <system>", "placidus|wholeSign|equal|koch|campanus|regiomontanus|porphyry", "placidus")
-    .option("--sidereal [ayanamsa]", "sidereal zodiac: lahiri (default), raman, krishnamurti, faganBradley")
+    .option(
+      "--houses <system>",
+      "placidus|wholeSign|equal|koch|campanus|regiomontanus|porphyry",
+      "placidus",
+    )
+    .option(
+      "--sidereal [ayanamsa]",
+      "sidereal zodiac: lahiri (default), raman, krishnamurti, faganBradley",
+    )
     .option("--varga <dN>", "divisional chart: d1 d2 d3 d7 d9 d10 d12 d30 d60")
     .option("--harmonic <n>", "also show the nth harmonic positions")
     .option("--minor-aspects", "include minor aspects")
-    .option("--time-standard <mode>", "auto|iana|lmt — how to interpret clock time", "auto")
-    .option("--julian", "date is in the Julian calendar (implies Local Mean Time)")
+    .option(
+      "--time-standard <mode>",
+      "auto|iana|lmt — how to interpret clock time",
+      "auto",
+    )
+    .option(
+      "--julian",
+      "date is in the Julian calendar (implies Local Mean Time)",
+    )
     .option("--svg <path>", "write a chart wheel SVG to this file")
     .option("--light", "use the ink-on-paper wheel theme (with --svg)")
     .option(
       "--read [mode]",
       "interpretation: parts (labelled, no AI) | fluent (built-in AI-written set) | ai (live via your ANTHROPIC_API_KEY)",
     )
-    .option("--ai-model <model>", `model for --read ai (default ${DEFAULT_AI_MODEL})`)
-    .option("--ai-voice <voice>", "voice for --read ai: pirate|bard|bubble|professor|politician|noir|grandma|sportscaster|robot|dj, or free text")
-    .option("--content <path>", "personalised text overrides (JSON exported from the app's Library tab)")
-    .option("--stars", "list fixed-star conjunctions (royal + bright stars, 1° orb)")
-    .option("--report <path>", "write a printable HTML report (print to PDF from a browser)")
+    .option(
+      "--ai-model <model>",
+      `model for --read ai (default ${DEFAULT_AI_MODEL})`,
+    )
+    .option(
+      "--ai-voice <voice>",
+      "voice for --read ai: pirate|bard|bubble|professor|politician|noir|grandma|sportscaster|robot|dj, or free text",
+    )
+    .option(
+      "--content <path>",
+      "personalised text overrides (JSON exported from the app's Library tab)",
+    )
+    .option(
+      "--stars",
+      "list fixed-star conjunctions (royal + bright stars, 1° orb)",
+    )
+    .option(
+      "--report <path>",
+      "write a printable HTML report (print to PDF from a browser)",
+    )
     .option("--json", "machine-readable JSON output");
 }
 
@@ -507,6 +625,7 @@ addCommonOptions(
   const chart = computeChart(buildInput(moment, opts), provider);
   const scheme = schemeFor(chart);
   const mode = readMode(opts);
+  const loaded = mode || opts.report ? loadContent(opts) : {};
   maybeWriteSvg(opts, () => renderWheel(chart, wheelTheme(opts)));
   if (opts.report) {
     writeFileSync(
@@ -519,26 +638,33 @@ addCommonOptions(
         },
         scheme,
         fixedStarContacts(provider, chart),
+        loaded.content,
       ),
     );
-    if (!opts.json) console.log(`(report written to ${opts.report} — print to PDF from a browser)\n`);
+    if (!opts.json)
+      console.log(
+        `(report written to ${opts.report} — print to PDF from a browser)\n`,
+      );
   }
   if (opts.json) {
     const reading =
       mode === "parts"
-        ? readChart(chart, scheme)
+        ? readChart(chart, scheme, { content: loaded.content })
         : mode === "fluent"
           ? {
               paragraphs: chart.positions.map((p) => ({
                 body: p.body,
-                text: fluentPlacement(p.body, p.sign, p.house),
+                text: fluentPlacement(p.body, p.sign, p.house, loaded.content),
               })),
               provenance: FLUENT_PROVENANCE,
             }
           : mode === "ai"
             ? await aiReading(chart, scheme, {
-                apiKey: process.env["ANTHROPIC_API_KEY"] ?? fail("ANTHROPIC_API_KEY required for --read ai"),
+                apiKey:
+                  process.env["ANTHROPIC_API_KEY"] ??
+                  fail("ANTHROPIC_API_KEY required for --read ai"),
                 model: opts.aiModel,
+                voice: opts.aiVoice,
               })
             : undefined;
     console.log(
@@ -546,7 +672,9 @@ addCommonOptions(
         {
           ...chartToJson(chart, opts, moment),
           ...(reading ? { reading, readingMode: mode } : {}),
-          ...(opts.stars ? { starContacts: fixedStarContacts(provider, chart) } : {}),
+          ...(opts.stars
+            ? { starContacts: fixedStarContacts(provider, chart) }
+            : {}),
         },
         null,
         2,
@@ -593,87 +721,127 @@ addCommonOptions(
     .option("--at <HH:MM>", "transit time (default: now / noon with --on)")
     .option("--scan <days>", "list exact transit hits in the coming N days")
     .option("--moon", "include the transiting Moon in --scan"),
-).action((opts: CommonOpts & { date: string; on?: string; at?: string; scan?: string; moon?: boolean }) => {
-  const provider = new SwephProvider();
-  const natalMoment = resolveMoment(opts.date, opts);
-  const natal = computeChart(buildInput(natalMoment, opts), provider);
-
-  const zone = natalMoment.zone;
-  const transitDate = opts.on ?? DateTime.now().setZone(zone).toISODate()!;
-  const transitTime =
-    opts.at ?? (opts.on ? "12:00" : DateTime.now().setZone(zone).toFormat("HH:mm"));
-  const sky = computeChart(
-    {
-      utc: localToUtc(transitDate, transitTime, {
-        longitude: natalMoment.location?.longitude ?? 0,
-        zone,
-      }).utc,
-      zodiac: natal.zodiac,
+).action(
+  (
+    opts: CommonOpts & {
+      date: string;
+      on?: string;
+      at?: string;
+      scan?: string;
+      moon?: boolean;
     },
-    provider,
-  );
-  // Transiting planets are read through the natal houses.
-  if (natal.houses) {
-    for (const p of sky.positions) p.house = houseOf(p.longitude, natal.houses);
-  }
-  const hits = findCrossAspects(sky.positions, natal.positions);
-  maybeWriteSvg(opts, () =>
-    renderWheel(natal, {
-      ...wheelTheme(opts),
-      outer: { positions: sky.positions, aspects: hits },
-    }),
-  );
+  ) => {
+    const provider = new SwephProvider();
+    const natalMoment = resolveMoment(opts.date, opts);
+    const natal = computeChart(buildInput(natalMoment, opts), provider);
 
-  const scanDays = opts.scan ? parseInt(opts.scan, 10) : 0;
-  const scanHits: TransitHit[] = scanDays
-    ? scanTransits(
-        provider,
-        natal.positions,
-        { from: sky.utc, days: scanDays, zodiac: natal.zodiac },
-        opts.moon
-          ? { bodies: ["sun", "moon", "mercury", "venus", "mars", "jupiter", "saturn", "uranus", "neptune", "pluto", "chiron"] }
-          : {},
-      )
-    : [];
-
-  if (opts.json) {
-    console.log(
-      JSON.stringify(
-        {
-          natal: chartToJson(natal, opts, natalMoment),
-          transiting: sky.positions.map((p) => ({ ...p, formatted: formatLongitude(p.longitude) })),
-          transitUtc: sky.utc,
-          aspects: hits,
-          ...(scanDays ? { upcoming: scanHits } : {}),
-        },
-        null,
-        2,
-      ),
+    const zone = natalMoment.zone;
+    const transitDate = opts.on ?? DateTime.now().setZone(zone).toISODate()!;
+    const transitTime =
+      opts.at ??
+      (opts.on ? "12:00" : DateTime.now().setZone(zone).toFormat("HH:mm"));
+    const sky = computeChart(
+      {
+        utc: localToUtc(transitDate, transitTime, {
+          longitude: natalMoment.location?.longitude ?? 0,
+          zone,
+        }).utc,
+        zodiac: natal.zodiac,
+      },
+      provider,
     );
-    return;
-  }
-
-  printHeader(natal, natalMoment);
-  console.log(`\n  TRANSITS for ${transitDate} ${transitTime} ${zone}`);
-  for (const p of sky.positions) {
-    const name = BODY_NAMES[p.body].padEnd(18);
-    const pos = formatLongitude(p.longitude).padEnd(19);
-    const house = p.house ? `natal house ${String(p.house).padStart(2)}` : "";
-    const rx = p.retrograde ? "  ℞" : "";
-    console.log(`  ${BODY_GLYPHS[p.body]}  ${name}${pos}${house}${rx}`);
-  }
-  printAspects(hits, "TRANSITING → NATAL (orb ≤ 3°)");
-  if (scanDays) {
-    console.log(`\n  EXACT HITS, NEXT ${scanDays} DAYS${opts.moon ? "" : " (Moon excluded; add --moon)"}`);
-    for (const h of scanHits) {
-      const when = DateTime.fromJSDate(h.utc).setZone(zone).toFormat("yyyy-LL-dd HH:mm");
-      const label = `${BODY_NAMES[h.transiting]} ${h.aspect} natal ${BODY_NAMES[h.natal]}`.padEnd(42);
-      console.log(`  ${when}  ${BODY_GLYPHS[h.transiting]}${h.retrograde ? "℞" : " "}–${BODY_GLYPHS[h.natal]}  ${label}`);
+    // Transiting planets are read through the natal houses.
+    if (natal.houses) {
+      for (const p of sky.positions)
+        p.house = houseOf(p.longitude, natal.houses);
     }
-    if (!scanHits.length) console.log("  (none)");
-  }
-  console.log();
-});
+    const hits = findCrossAspects(sky.positions, natal.positions);
+    maybeWriteSvg(opts, () =>
+      renderWheel(natal, {
+        ...wheelTheme(opts),
+        outer: { positions: sky.positions, aspects: hits },
+      }),
+    );
+
+    const scanDays = opts.scan
+      ? parseIntInRange(opts.scan, "--scan", 1, 3660)
+      : 0;
+    const scanHits: TransitHit[] = scanDays
+      ? scanTransits(
+          provider,
+          natal.positions,
+          { from: sky.utc, days: scanDays, zodiac: natal.zodiac },
+          opts.moon
+            ? {
+                bodies: [
+                  "sun",
+                  "moon",
+                  "mercury",
+                  "venus",
+                  "mars",
+                  "jupiter",
+                  "saturn",
+                  "uranus",
+                  "neptune",
+                  "pluto",
+                  "chiron",
+                ],
+              }
+            : {},
+        )
+      : [];
+
+    if (opts.json) {
+      console.log(
+        JSON.stringify(
+          {
+            natal: chartToJson(natal, opts, natalMoment),
+            transiting: sky.positions.map((p) => ({
+              ...p,
+              formatted: formatLongitude(p.longitude),
+            })),
+            transitUtc: sky.utc,
+            aspects: hits,
+            ...(scanDays ? { upcoming: scanHits } : {}),
+          },
+          null,
+          2,
+        ),
+      );
+      return;
+    }
+
+    printHeader(natal, natalMoment);
+    console.log(`\n  TRANSITS for ${transitDate} ${transitTime} ${zone}`);
+    for (const p of sky.positions) {
+      const name = BODY_NAMES[p.body].padEnd(18);
+      const pos = formatLongitude(p.longitude).padEnd(19);
+      const house = p.house ? `natal house ${String(p.house).padStart(2)}` : "";
+      const rx = p.retrograde ? "  ℞" : "";
+      console.log(`  ${BODY_GLYPHS[p.body]}  ${name}${pos}${house}${rx}`);
+    }
+    printAspects(hits, "TRANSITING → NATAL (orb ≤ 3°)");
+    if (scanDays) {
+      console.log(
+        `\n  EXACT HITS, NEXT ${scanDays} DAYS${opts.moon ? "" : " (Moon excluded; add --moon)"}`,
+      );
+      for (const h of scanHits) {
+        const when = DateTime.fromJSDate(h.utc)
+          .setZone(zone)
+          .toFormat("yyyy-LL-dd HH:mm");
+        const label =
+          `${BODY_NAMES[h.transiting]} ${h.aspect} natal ${BODY_NAMES[h.natal]}`.padEnd(
+            42,
+          );
+        console.log(
+          `  ${when}  ${BODY_GLYPHS[h.transiting]}${h.retrograde ? "℞" : " "}–${BODY_GLYPHS[h.natal]}  ${label}`,
+        );
+      }
+      if (!scanHits.length) console.log("  (none)");
+    }
+    console.log();
+  },
+);
 
 addCommonOptions(
   program
@@ -682,115 +850,182 @@ addCommonOptions(
     .argument("<kind>", "solar | lunar")
     .requiredOption("-d, --date <YYYY-MM-DD>", "natal date")
     .option("--year <YYYY>", "solar return year (default: current)")
-    .option("--after <YYYY-MM-DD>", "lunar return after this date (default: today)"),
-).action(function (this: Command, kind: string, opts: CommonOpts & { date: string; year?: string; after?: string }) {
-    if (kind !== "solar" && kind !== "lunar") fail("kind must be solar or lunar");
-    const provider = new SwephProvider();
-    const natalMoment = resolveMoment(opts.date, opts);
-    const natal = computeChart(buildInput(natalMoment, opts), provider);
-    const chart =
-      kind === "solar"
-        ? solarReturn(provider, natal, opts.year ? parseInt(opts.year, 10) : new Date().getUTCFullYear())
-        : lunarReturn(provider, natal, opts.after ? new Date(`${opts.after}T00:00:00Z`) : new Date());
-    const local = DateTime.fromJSDate(chart.utc).setZone(natalMoment.zone);
-    const moment: ResolvedMoment = {
-      utc: chart.utc,
-      calendar: "gregorian",
-      location: chart.location,
-      zone: natalMoment.zone,
-      wall: DateTime.fromISO(local.toISO()!.slice(0, 16), { zone: "UTC" }),
-      noTime: false,
-      timeNote: `${kind} return for the natal chart of ${opts.date}`,
-    };
-    maybeWriteSvg(opts, () => renderWheel(chart, wheelTheme(opts)));
-    if (opts.json) {
-      console.log(JSON.stringify(chartToJson(chart, opts, moment), null, 2));
-    } else {
-      console.log(`(${moment.timeNote})\n`);
-      printChart(chart, moment, opts);
-    }
-  });
+    .option(
+      "--after <YYYY-MM-DD>",
+      "lunar return after this date (default: today)",
+    ),
+).action(function (
+  this: Command,
+  kind: string,
+  opts: CommonOpts & { date: string; year?: string; after?: string },
+) {
+  if (kind !== "solar" && kind !== "lunar") fail("kind must be solar or lunar");
+  const provider = new SwephProvider();
+  const natalMoment = resolveMoment(opts.date, opts);
+  const natal = computeChart(buildInput(natalMoment, opts), provider);
+  const chart =
+    kind === "solar"
+      ? solarReturn(
+          provider,
+          natal,
+          opts.year
+            ? parseIntInRange(opts.year, "--year", 0, 9999)
+            : new Date().getUTCFullYear(),
+        )
+      : lunarReturn(
+          provider,
+          natal,
+          opts.after
+            ? parseDateAt(opts.after, "--after", "00:00:00")
+            : new Date(),
+        );
+  const local = DateTime.fromJSDate(chart.utc).setZone(natalMoment.zone);
+  const moment: ResolvedMoment = {
+    utc: chart.utc,
+    calendar: "gregorian",
+    location: chart.location,
+    zone: natalMoment.zone,
+    wall: DateTime.fromISO(local.toISO()!.slice(0, 16), { zone: "UTC" }),
+    noTime: false,
+    timeNote: `${kind} return for the natal chart of ${opts.date}`,
+  };
+  maybeWriteSvg(opts, () => renderWheel(chart, wheelTheme(opts)));
+  if (opts.json) {
+    console.log(JSON.stringify(chartToJson(chart, opts, moment), null, 2));
+  } else {
+    console.log(`(${moment.timeNote})\n`);
+    printChart(chart, moment, opts);
+  }
+});
 
 addCommonOptions(
   program
     .command("progressed")
-    .description("secondary progressed chart (and optional solar arc directions)")
+    .description(
+      "secondary progressed chart (and optional solar arc directions)",
+    )
     .requiredOption("-d, --date <YYYY-MM-DD>", "natal date")
-    .option("--to <YYYY-MM-DD>", "date the progression is read for (default: today)")
+    .option(
+      "--to <YYYY-MM-DD>",
+      "date the progression is read for (default: today)",
+    )
     .option("--solar-arc", "also list solar arc directed positions"),
-).action(function (this: Command, opts: CommonOpts & { date: string; to?: string; solarArc?: boolean }) {
-    const provider = new SwephProvider();
-    const natalMoment = resolveMoment(opts.date, opts);
-    const natal = computeChart(buildInput(natalMoment, opts), provider);
-    const target = opts.to ? new Date(`${opts.to}T12:00:00Z`) : new Date();
-    const prog = secondaryProgression(provider, natal, target);
-    const arc = opts.solarArc ? solarArcDirections(provider, natal, target) : undefined;
-    const moment: ResolvedMoment = {
-      utc: prog.utc,
-      calendar: "gregorian",
-      location: prog.location,
-      zone: "UTC",
-      wall: DateTime.fromJSDate(prog.utc, { zone: "UTC" }),
-      noTime: false,
-      timeNote: `secondary progression of ${opts.date} read for ${(opts.to ?? "today")}`,
-    };
-    if (opts.json) {
+).action(function (
+  this: Command,
+  opts: CommonOpts & { date: string; to?: string; solarArc?: boolean },
+) {
+  const provider = new SwephProvider();
+  const natalMoment = resolveMoment(opts.date, opts);
+  const natal = computeChart(buildInput(natalMoment, opts), provider);
+  const target = opts.to ? parseDateAt(opts.to, "--to") : new Date();
+  const prog = secondaryProgression(provider, natal, target);
+  const arc = opts.solarArc
+    ? solarArcDirections(provider, natal, target)
+    : undefined;
+  const moment: ResolvedMoment = {
+    utc: prog.utc,
+    calendar: "gregorian",
+    location: prog.location,
+    zone: "UTC",
+    wall: DateTime.fromJSDate(prog.utc, { zone: "UTC" }),
+    noTime: false,
+    timeNote: `secondary progression of ${opts.date} read for ${opts.to ?? "today"}`,
+  };
+  if (opts.json) {
+    console.log(
+      JSON.stringify(
+        {
+          progressed: chartToJson(prog, opts, moment),
+          ...(arc ? { solarArc: arc } : {}),
+        },
+        null,
+        2,
+      ),
+    );
+    return;
+  }
+  console.log(
+    `(${moment.timeNote}; progressed houses are one convention of several)\n`,
+  );
+  printChart(prog, moment, opts);
+  if (arc) {
+    console.log(`  SOLAR ARC DIRECTIONS (arc ${arc.arc.toFixed(2)}°)`);
+    for (const p of arc.positions) {
       console.log(
-        JSON.stringify(
-          {
-            progressed: chartToJson(prog, opts, moment),
-            ...(arc ? { solarArc: arc } : {}),
-          },
-          null,
-          2,
-        ),
+        `  ${BODY_GLYPHS[p.body]}  ${BODY_NAMES[p.body].padEnd(18)}${formatLongitude(p.longitude)}`,
       );
-      return;
     }
-    console.log(`(${moment.timeNote}; progressed houses are one convention of several)\n`);
-    printChart(prog, moment, opts);
-    if (arc) {
-      console.log(`  SOLAR ARC DIRECTIONS (arc ${arc.arc.toFixed(2)}°)`);
-      for (const p of arc.positions) {
-        console.log(`  ${BODY_GLYPHS[p.body]}  ${BODY_NAMES[p.body].padEnd(18)}${formatLongitude(p.longitude)}`);
-      }
-      console.log();
-    }
-  });
+    console.log();
+  }
+});
 
 program
   .command("ephemeris")
-  .description("upcoming sky events: lunations, stations, ingresses, void-of-course Moon")
+  .description(
+    "upcoming sky events: lunations, stations, ingresses, void-of-course Moon",
+  )
   .option("--from <YYYY-MM-DD>", "start date (default: today)")
   .option("--days <n>", "window length in days", "14")
   .option("-z, --zone <iana>", "IANA time zone for display", "UTC")
   .option("--json", "machine-readable JSON output")
-  .action((opts: { from?: string; days: string; zone: string; json?: boolean }) => {
-    const provider = new SwephProvider();
-    const from = opts.from ? new Date(`${opts.from}T00:00:00Z`) : new Date();
-    const days = parseInt(opts.days, 10);
-    const window = { from, days };
-    const lunations = scanLunations(provider, window);
-    const stations = scanStations(provider, window);
-    const ingresses = scanIngresses(provider, window);
-    const voc = scanVoidOfCourse(provider, window);
-    if (opts.json) {
-      console.log(JSON.stringify({ from, days, lunations, stations, ingresses, voidOfCourse: voc }, null, 2));
-      return;
-    }
-    const fmt = (d: Date) => DateTime.fromJSDate(d).setZone(opts.zone).toFormat("yyyy-LL-dd HH:mm");
-    const LUNATION_LABEL = { new: "● new moon", firstQuarter: "◐ first quarter", full: "○ full moon", lastQuarter: "◑ last quarter" };
-    console.log(`\n  SKY EVENTS — ${days} days from ${fmt(from)} (${opts.zone})\n`);
-    const lines: { jd: number; text: string }[] = [
-      ...lunations.map((e) => ({ jd: e.jd, text: `${fmt(e.utc)}  ${LUNATION_LABEL[e.type]} at ${formatLongitude(e.longitude)}` })),
-      ...stations.map((e) => ({ jd: e.jd, text: `${fmt(e.utc)}  ${BODY_GLYPHS[e.body]} ${BODY_NAMES[e.body]} stations ${e.type} at ${formatLongitude(e.longitude)}` })),
-      ...ingresses.filter((e) => e.body !== "moon").map((e) => ({ jd: e.jd, text: `${fmt(e.utc)}  ${BODY_GLYPHS[e.body]} ${BODY_NAMES[e.body]} ${e.retrograde ? "backs into" : "enters"} ${e.sign}` })),
-      ...voc.map((p) => ({ jd: p.jdStart, text: `${fmt(p.start)}  ☽ void-of-course until ${fmt(p.end)} (enters ${p.entering})` })),
-    ].sort((a, b) => a.jd - b.jd);
-    for (const l of lines) console.log(`  ${l.text}`);
-    if (!lines.length) console.log("  (nothing found — quiet sky)");
-    console.log();
-  });
+  .action(
+    (opts: { from?: string; days: string; zone: string; json?: boolean }) => {
+      const provider = new SwephProvider();
+      const from = opts.from
+        ? parseDateAt(opts.from, "--from", "00:00:00")
+        : new Date();
+      const days = parseIntInRange(opts.days, "--days", 1, 3660);
+      const window = { from, days };
+      const lunations = scanLunations(provider, window);
+      const stations = scanStations(provider, window);
+      const ingresses = scanIngresses(provider, window);
+      const voc = scanVoidOfCourse(provider, window);
+      if (opts.json) {
+        console.log(
+          JSON.stringify(
+            { from, days, lunations, stations, ingresses, voidOfCourse: voc },
+            null,
+            2,
+          ),
+        );
+        return;
+      }
+      const fmt = (d: Date) =>
+        DateTime.fromJSDate(d).setZone(opts.zone).toFormat("yyyy-LL-dd HH:mm");
+      const LUNATION_LABEL = {
+        new: "● new moon",
+        firstQuarter: "◐ first quarter",
+        full: "○ full moon",
+        lastQuarter: "◑ last quarter",
+      };
+      console.log(
+        `\n  SKY EVENTS — ${days} days from ${fmt(from)} (${opts.zone})\n`,
+      );
+      const lines: { jd: number; text: string }[] = [
+        ...lunations.map((e) => ({
+          jd: e.jd,
+          text: `${fmt(e.utc)}  ${LUNATION_LABEL[e.type]} at ${formatLongitude(e.longitude)}`,
+        })),
+        ...stations.map((e) => ({
+          jd: e.jd,
+          text: `${fmt(e.utc)}  ${BODY_GLYPHS[e.body]} ${BODY_NAMES[e.body]} stations ${e.type} at ${formatLongitude(e.longitude)}`,
+        })),
+        ...ingresses
+          .filter((e) => e.body !== "moon")
+          .map((e) => ({
+            jd: e.jd,
+            text: `${fmt(e.utc)}  ${BODY_GLYPHS[e.body]} ${BODY_NAMES[e.body]} ${e.retrograde ? "backs into" : "enters"} ${e.sign}`,
+          })),
+        ...voc.map((p) => ({
+          jd: p.jdStart,
+          text: `${fmt(p.start)}  ☽ void-of-course until ${fmt(p.end)} (enters ${p.entering})`,
+        })),
+      ].sort((a, b) => a.jd - b.jd);
+      for (const l of lines) console.log(`  ${l.text}`);
+      if (!lines.length) console.log("  (nothing found — quiet sky)");
+      console.log();
+    },
+  );
 
 interface PartnerOpts {
   date2: string;
@@ -805,7 +1040,10 @@ function addPartnerOptions(cmd: Command): Command {
   return cmd
     .requiredOption("--date2 <YYYY-MM-DD>", "second person's date of birth")
     .option("--time2 <HH:MM>", "second person's time of birth")
-    .option("--zone2 <iana>", "second person's time zone (default: their place's)")
+    .option(
+      "--zone2 <iana>",
+      "second person's time zone (default: their place's)",
+    )
     .option("--place2 <query>", "second person's birthplace")
     .option("--lat2 <deg>", "second person's latitude")
     .option("--lon2 <deg>", "second person's longitude");
@@ -853,70 +1091,91 @@ addPartnerOptions(
   addCommonOptions(
     program
       .command("synastry")
-      .description("two natal charts compared: inter-aspects and house overlays")
+      .description(
+        "two natal charts compared: inter-aspects and house overlays",
+      )
       .requiredOption("-d, --date <YYYY-MM-DD>", "first person's date of birth")
-      .option("--bouquet <path>", "write the compatibility bouquet SVG to this file"),
-  ),
-).action((opts: CommonOpts & PartnerOpts & { date: string; bouquet?: string }) => {
-  const provider = new SwephProvider();
-  const { a, b, momentA, momentB } = chartPair(opts, provider);
-  const result = synastry(a, b);
-  const bouquet = synastryBouquet(result.aspects);
-  if (opts.bouquet) {
-    writeFileSync(opts.bouquet, renderBouquet(bouquet, wheelTheme(opts)));
-    if (!opts.json) console.log(`(bouquet written to ${opts.bouquet})\n`);
-  }
-  maybeWriteSvg(opts, () =>
-    renderWheel(a, {
-      ...wheelTheme(opts),
-      outer: { positions: b.positions, aspects: result.aspects.map((x) => ({ ...x, a: x.a, b: x.b })) },
-    }),
-  );
-  if (opts.json) {
-    console.log(
-      JSON.stringify(
-        {
-          a: chartToJson(a, opts, momentA),
-          b: chartToJson(b, opts, momentB),
-          synastry: result,
-          bouquet,
-        },
-        null,
-        2,
+      .option(
+        "--bouquet <path>",
+        "write the compatibility bouquet SVG to this file",
       ),
+  ),
+).action(
+  (opts: CommonOpts & PartnerOpts & { date: string; bouquet?: string }) => {
+    const provider = new SwephProvider();
+    const { a, b, momentA, momentB } = chartPair(opts, provider);
+    const result = synastry(a, b);
+    const bouquet = synastryBouquet(result.aspects);
+    if (opts.bouquet) {
+      writeFileSync(opts.bouquet, renderBouquet(bouquet, wheelTheme(opts)));
+      if (!opts.json) console.log(`(bouquet written to ${opts.bouquet})\n`);
+    }
+    maybeWriteSvg(opts, () =>
+      renderWheel(a, {
+        ...wheelTheme(opts),
+        // renderWheel's outer aspects take a = outer body, b = inner body;
+        // synastry aspects are a = chart A (inner), b = chart B (outer).
+        outer: {
+          positions: b.positions,
+          aspects: result.aspects.map((x) => ({ ...x, a: x.b, b: x.a })),
+        },
+      }),
     );
-    return;
-  }
-  console.log(`\n  SYNASTRY — A: ${opts.date} × B: ${opts.date2}`);
-  printHeader(a, momentA);
-  printHeader(b, momentB);
-  printAspects(result.aspects, "INTER-ASPECTS (A's planet → B's planet)", false);
-  const overlayLine = (o: { body: Body; house: number }) =>
-    `${BODY_GLYPHS[o.body]} ${BODY_NAMES[o.body]} → house ${o.house}`;
-  if (result.aInBHouses) {
-    console.log("\n  A'S PLANETS IN B'S HOUSES");
-    console.log("  " + result.aInBHouses.map(overlayLine).join("   "));
-  }
-  if (result.bInAHouses) {
-    console.log("\n  B'S PLANETS IN A'S HOUSES");
-    console.log("  " + result.bInAHouses.map(overlayLine).join("   "));
-  }
-  console.log("\n  THE BOUQUET");
-  console.log(
-    `  ✿ ${bouquet.blooms} bloom${bouquet.blooms === 1 ? "" : "s"}   ` +
-      `⌇ ${bouquet.thorns} thorn${bouquet.thorns === 1 ? "" : "s"}   ` +
-      `● ${bouquet.buds} bud${bouquet.buds === 1 ? "" : "s"}`,
-  );
-  console.log(`  ${bouquet.disclaimer}`);
-  console.log();
-});
+    if (opts.json) {
+      console.log(
+        JSON.stringify(
+          {
+            a: chartToJson(a, opts, momentA),
+            b: chartToJson(b, opts, momentB),
+            synastry: result,
+            bouquet,
+          },
+          null,
+          2,
+        ),
+      );
+      return;
+    }
+    console.log(`\n  SYNASTRY — A: ${opts.date} × B: ${opts.date2}`);
+    printHeader(a, momentA);
+    printHeader(b, momentB);
+    printAspects(
+      result.aspects,
+      "INTER-ASPECTS (A's planet → B's planet)",
+      false,
+    );
+    const overlayLine = (o: { body: Body; house: number }) =>
+      `${BODY_GLYPHS[o.body]} ${BODY_NAMES[o.body]} → house ${o.house}`;
+    if (result.aInBHouses) {
+      console.log("\n  A'S PLANETS IN B'S HOUSES");
+      console.log("  " + result.aInBHouses.map(overlayLine).join("   "));
+    }
+    if (result.bInAHouses) {
+      console.log("\n  B'S PLANETS IN A'S HOUSES");
+      console.log("  " + result.bInAHouses.map(overlayLine).join("   "));
+    }
+    console.log("\n  THE BOUQUET");
+    console.log(
+      `  ✿ ${bouquet.blooms} bloom${bouquet.blooms === 1 ? "" : "s"}   ` +
+        `⌇ ${bouquet.thorns} thorn${bouquet.thorns === 1 ? "" : "s"}   ` +
+        `● ${bouquet.buds} bud${bouquet.buds === 1 ? "" : "s"}`,
+    );
+    console.log(`  ${bouquet.disclaimer}`);
+    console.log();
+  },
+);
 
 addPartnerOptions(
   addCommonOptions(
     program
       .command("composite")
-      .description("midpoint composite chart — the relationship as its own entity")
-      .requiredOption("-d, --date <YYYY-MM-DD>", "first person's date of birth"),
+      .description(
+        "midpoint composite chart — the relationship as its own entity",
+      )
+      .requiredOption(
+        "-d, --date <YYYY-MM-DD>",
+        "first person's date of birth",
+      ),
   ),
 ).action((opts: CommonOpts & PartnerOpts & { date: string }) => {
   const provider = new SwephProvider();
@@ -940,7 +1199,10 @@ addPartnerOptions(
     program
       .command("davison")
       .description("Davison chart — cast at the midpoint in time and space")
-      .requiredOption("-d, --date <YYYY-MM-DD>", "first person's date of birth"),
+      .requiredOption(
+        "-d, --date <YYYY-MM-DD>",
+        "first person's date of birth",
+      ),
   ),
 ).action((opts: CommonOpts & PartnerOpts & { date: string }) => {
   const provider = new SwephProvider();
@@ -968,7 +1230,10 @@ addCommonOptions(
   const provider = new SwephProvider();
   const moment = resolveMoment(opts.date, opts);
   // Vimshottari is defined on the sidereal Moon regardless of the display zodiac.
-  const ayanamsa = typeof opts.sidereal === "string" ? (opts.sidereal as Ayanamsa) : "lahiri";
+  const ayanamsa =
+    typeof opts.sidereal === "string"
+      ? parseChoice(opts.sidereal, "--sidereal", AYANAMSAS)
+      : "lahiri";
   const moon = provider.bodyPosition(
     provider.julianDayUt(moment.utc, moment.calendar),
     "moon",
@@ -998,17 +1263,24 @@ addCommonOptions(
 
   const cap = (s: string) => s[0]!.toUpperCase() + s.slice(1);
   const fmtD = (d: Date) => DateTime.fromJSDate(d).toFormat("yyyy-LL-dd");
-  console.log(`\n  VIMSHOTTARI MAHADASHAS  (sidereal ☽ ${formatLongitude(moon.longitude)}, ${ayanamsa})\n`);
+  console.log(
+    `\n  VIMSHOTTARI MAHADASHAS  (sidereal ☽ ${formatLongitude(moon.longitude)}, ${ayanamsa})\n`,
+  );
   for (const p of periods) {
     const marker = p === current ? "▶" : " ";
-    console.log(`  ${marker} ${cap(p.lord).padEnd(9)}${fmtD(p.start)} → ${fmtD(p.end)}`);
+    console.log(
+      `  ${marker} ${cap(p.lord).padEnd(9)}${fmtD(p.start)} → ${fmtD(p.end)}`,
+    );
   }
   if (current) {
     console.log(`\n  ANTARDASHAS OF ${cap(current.lord).toUpperCase()}`);
     const subNow = dashaAt(antardashas(current), now);
     for (const s of antardashas(current)) {
-      const marker = subNow && s.start.getTime() === subNow.start.getTime() ? "▶" : " ";
-      console.log(`  ${marker} ${cap(current.lord)}–${cap(s.lord).padEnd(9)}${fmtD(s.start)} → ${fmtD(s.end)}`);
+      const marker =
+        subNow && s.start.getTime() === subNow.start.getTime() ? "▶" : " ";
+      console.log(
+        `  ${marker} ${cap(current.lord)}–${cap(s.lord).padEnd(9)}${fmtD(s.start)} → ${fmtD(s.end)}`,
+      );
     }
   }
   console.log();
@@ -1025,74 +1297,126 @@ program
   .option("--moon-signs <signs>", "comma list, e.g. Taurus,Cancer")
   .option("--waxing", "waxing Moon only (new → full)")
   .option("--json", "machine-readable JSON output")
-  .action((opts: {
-    from?: string; days: string; zone: string; allowVoc?: boolean;
-    avoidRetro?: string; moonSigns?: string; waxing?: boolean; json?: boolean;
-  }) => {
-    const provider = new SwephProvider();
-    const from = opts.from ? new Date(`${opts.from}T00:00:00Z`) : new Date();
-    const windows = scanElectional(provider, { from, days: parseInt(opts.days, 10) }, {
-      avoidVoidOfCourse: !opts.allowVoc,
-      avoidRetrograde: opts.avoidRetro?.split(",").map((s) => s.trim() as Body),
-      moonSigns: opts.moonSigns?.split(",").map((s) => s.trim() as Sign),
-      waxingMoon: opts.waxing,
-    });
-    if (opts.json) {
-      console.log(JSON.stringify(windows, null, 2));
-      return;
-    }
-    const fmtT = (d: Date) => DateTime.fromJSDate(d).setZone(opts.zone).toFormat("yyyy-LL-dd HH:mm");
-    console.log(`\n  ELECTIONAL WINDOWS (${opts.zone})\n`);
-    for (const w of windows) {
-      console.log(`  ${fmtT(w.start)} → ${fmtT(w.end)}   ☽ in ${w.moonSign}`);
-    }
-    if (!windows.length) console.log("  (no windows pass — loosen the criteria)");
-    console.log("\n  The windows dodge the classic cautions; whether a moment is right");
-    console.log("  for your purpose is a judgement the tradition reserves for you.\n");
-  });
+  .action(
+    (opts: {
+      from?: string;
+      days: string;
+      zone: string;
+      allowVoc?: boolean;
+      avoidRetro?: string;
+      moonSigns?: string;
+      waxing?: boolean;
+      json?: boolean;
+    }) => {
+      const provider = new SwephProvider();
+      const from = opts.from
+        ? parseDateAt(opts.from, "--from", "00:00:00")
+        : new Date();
+      const windows = scanElectional(
+        provider,
+        { from, days: parseIntInRange(opts.days, "--days", 1, 3660) },
+        {
+          avoidVoidOfCourse: !opts.allowVoc,
+          avoidRetrograde: parseList(
+            opts.avoidRetro,
+            "--avoid-retro",
+            ALL_BODIES,
+          ),
+          moonSigns: parseList(opts.moonSigns, "--moon-signs", SIGNS),
+          waxingMoon: opts.waxing,
+        },
+      );
+      if (opts.json) {
+        console.log(JSON.stringify(windows, null, 2));
+        return;
+      }
+      const fmtT = (d: Date) =>
+        DateTime.fromJSDate(d).setZone(opts.zone).toFormat("yyyy-LL-dd HH:mm");
+      console.log(`\n  ELECTIONAL WINDOWS (${opts.zone})\n`);
+      for (const w of windows) {
+        console.log(`  ${fmtT(w.start)} → ${fmtT(w.end)}   ☽ in ${w.moonSign}`);
+      }
+      if (!windows.length)
+        console.log("  (no windows pass — loosen the criteria)");
+      console.log(
+        "\n  The windows dodge the classic cautions; whether a moment is right",
+      );
+      console.log(
+        "  for your purpose is a judgement the tradition reserves for you.\n",
+      );
+    },
+  );
 
 addCommonOptions(
   program
     .command("rectify")
-    .description("estimate an unknown birth time from dated life events (approximate!)")
+    .description(
+      "estimate an unknown birth time from dated life events (approximate!)",
+    )
     .requiredOption("-d, --date <YYYY-MM-DD>", "date of birth")
-    .requiredOption("--events <dates>", "comma list of major life events, YYYY-MM-DD")
-    .option("--between <HH:MM-HH:MM>", "birth-time bracket to search", "00:00-23:59")
+    .requiredOption(
+      "--events <dates>",
+      "comma list of major life events, YYYY-MM-DD",
+    )
+    .option(
+      "--between <HH:MM-HH:MM>",
+      "birth-time bracket to search",
+      "00:00-23:59",
+    )
     .option("--step <minutes>", "candidate spacing", "8")
     .option("--top <n>", "how many candidates to show", "5"),
-).action((opts: CommonOpts & { date: string; events: string; between: string; step: string; top: string }) => {
-  const provider = new SwephProvider();
-  const [fromT, toT] = opts.between.split("-");
-  if (!fromT || !toT) fail("--between must look like 06:00-12:00");
-  const startMoment = resolveMoment(opts.date, { ...opts, time: fromT });
-  const endMoment = resolveMoment(opts.date, { ...opts, time: toT });
-  if (!startMoment.location) fail("rectification needs a birthplace (-p or --lat/--lon)");
-  const events = opts.events.split(",").map((s) => ({ utc: new Date(`${s.trim()}T12:00:00Z`) }));
-  const { candidates, disclaimer } = rectify(provider, {
-    location: startMoment.location,
-    candidates: candidateTimes(startMoment.utc, endMoment.utc, parseInt(opts.step, 10)),
-    events,
-  });
-  const top = candidates.slice(0, parseInt(opts.top, 10));
-  if (opts.json) {
-    console.log(JSON.stringify({ top, disclaimer }, null, 2));
-    return;
-  }
-  console.log(`\n  RECTIFICATION CANDIDATES (${events.length} events, ${candidates.length} times tested)\n`);
-  for (const c of top) {
-    const local = DateTime.fromJSDate(c.utc).setZone(startMoment.zone);
+).action(
+  (
+    opts: CommonOpts & {
+      date: string;
+      events: string;
+      between: string;
+      step: string;
+      top: string;
+    },
+  ) => {
+    const provider = new SwephProvider();
+    const [fromT, toT] = opts.between.split("-");
+    if (!fromT || !toT) fail("--between must look like 06:00-12:00");
+    const startMoment = resolveMoment(opts.date, { ...opts, time: fromT });
+    const endMoment = resolveMoment(opts.date, { ...opts, time: toT });
+    if (!startMoment.location)
+      fail("rectification needs a birthplace (-p or --lat/--lon)");
+    const events = opts.events
+      .split(",")
+      .map((s) => ({ utc: parseDateAt(s.trim(), "--events") }));
+    const { candidates, disclaimer } = rectify(provider, {
+      location: startMoment.location,
+      candidates: candidateTimes(
+        startMoment.utc,
+        endMoment.utc,
+        parseIntInRange(opts.step, "--step", 1, 1440),
+      ),
+      events,
+    });
+    const top = candidates.slice(0, parseIntInRange(opts.top, "--top", 1, 100));
+    if (opts.json) {
+      console.log(JSON.stringify({ top, disclaimer }, null, 2));
+      return;
+    }
     console.log(
-      `  ${local.toFormat("HH:mm")} ${startMoment.zone}  score ${c.score.toFixed(2).padStart(6)}  ` +
-        `ASC ${formatLongitude(c.ascendant)}  (${c.hits.length} angle hits)`,
+      `\n  RECTIFICATION CANDIDATES (${events.length} events, ${candidates.length} times tested)\n`,
     );
-  }
-  console.log(`\n  ${disclaimer}\n`);
-});
+    for (const c of top) {
+      const local = DateTime.fromJSDate(c.utc).setZone(startMoment.zone);
+      console.log(
+        `  ${local.toFormat("HH:mm")} ${startMoment.zone}  score ${c.score.toFixed(2).padStart(6)}  ` +
+          `ASC ${formatLongitude(c.ascendant)}  (${c.hits.length} angle hits)`,
+      );
+    }
+    console.log(`\n  ${disclaimer}\n`);
+  },
+);
 
 program
   .command("atlas")
   .description("search the built-in city atlas")
-  .argument("<query...>", 'e.g. astron atlas Perth, Australia')
+  .argument("<query...>", "e.g. astron atlas Perth, Australia")
   .option("--json", "machine-readable JSON output")
   .action((queryParts: string[], opts: { json?: boolean }) => {
     const query = queryParts.join(" ");
@@ -1112,4 +1436,9 @@ program
     }
   });
 
-program.parse();
+try {
+  await program.parseAsync();
+} catch (err) {
+  console.error(err instanceof Error ? err.message : String(err));
+  process.exit(1);
+}

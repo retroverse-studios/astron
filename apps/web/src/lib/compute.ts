@@ -1,4 +1,9 @@
-import { formatCity, localToUtc, type City, type ResolvedTime } from "@astron/atlas";
+import {
+  formatCity,
+  localToUtc,
+  type City,
+  type ResolvedTime,
+} from "@astron/atlas";
 import {
   computeChart,
   type Chart,
@@ -64,7 +69,11 @@ export function castMoment(
     {
       utc: resolved.utc,
       location: withHouses
-        ? { latitude: city.latitude, longitude: city.longitude, name: formatCity(city) }
+        ? {
+            latitude: city.latitude,
+            longitude: city.longitude,
+            name: formatCity(city),
+          }
         : undefined,
       zodiac: settings.zodiac,
       houseSystem: settings.houseSystem,

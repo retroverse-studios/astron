@@ -120,7 +120,9 @@ export class WasmSwephProvider implements EphemerisProvider {
       vertex = norm360(vertex - ay);
       if (system === "wholeSign") {
         const first = Math.floor(ascendant / 30) * 30;
-        cuspList = Array.from({ length: 12 }, (_, i) => norm360(first + i * 30));
+        cuspList = Array.from({ length: 12 }, (_, i) =>
+          norm360(first + i * 30),
+        );
       } else {
         cuspList = cuspList.map((c) => norm360(c - ay));
       }
@@ -134,7 +136,10 @@ export class WasmSwephProvider implements EphemerisProvider {
     // get_ayanamsa_ex_ut exists at runtime but is missing from the
     // package's type declarations.
     const swe = this.swe as unknown as {
-      get_ayanamsa_ex_ut(jd: number, flag: number): number | { ayanamsa: number };
+      get_ayanamsa_ex_ut(
+        jd: number,
+        flag: number,
+      ): number | { ayanamsa: number };
     };
     const r = swe.get_ayanamsa_ex_ut(jdUt, this.swe.SEFLG_SWIEPH);
     return typeof r === "number" ? r : r.ayanamsa;

@@ -25,6 +25,11 @@ const D30_EVEN: [number, number][] = [
  * even, ordinal odd).
  */
 export function vargaSign(longitude: number, varga: Varga): Sign {
+  if (
+    !["d1", "d2", "d3", "d7", "d9", "d10", "d12", "d30", "d60"].includes(varga)
+  ) {
+    throw new Error(`unknown varga: ${String(varga)}`);
+  }
   const lon = norm360(longitude);
   const rasi = signIndex(lon); // 0 = Aries
   const deg = degreeInSign(lon);

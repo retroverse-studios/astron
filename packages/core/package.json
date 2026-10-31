@@ -1,9 +1,10 @@
 {
   "name": "@astron/core",
   "version": "0.1.0",
-  "description": "ASTRON calculation engine — ephemeris, houses, aspects, vargas. Pure TypeScript API over a pluggable ephemeris provider.",
+  "description": "ASTRON calculation engine \u2014 ephemeris, houses, aspects, vargas. Pure TypeScript API over a pluggable ephemeris provider.",
   "license": "AGPL-3.0-only",
   "type": "module",
+  "sideEffects": false,
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -31,6 +32,6 @@
   "devDependencies": {
     "@types/node": "^22",
     "typescript": "^5.7.0",
-    "vitest": "^2.1.9"
+    "vitest": "^5.0.5"
   }
 }

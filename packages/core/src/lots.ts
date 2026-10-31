@@ -20,7 +20,8 @@ function lotOf(
   const moon = chart.positions.find((p) => p.body === "moon");
   if (!sun || !moon) return undefined;
   const asc = chart.houses.ascendant;
-  const lon = (b: "sun" | "moon") => (b === "sun" ? sun.longitude : moon.longitude);
+  const lon = (b: "sun" | "moon") =>
+    b === "sun" ? sun.longitude : moon.longitude;
   return isDayChart(sun.longitude, asc)
     ? norm360(asc + lon(plus) - lon(minus))
     : norm360(asc + lon(minus) - lon(plus));

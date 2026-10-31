@@ -1,6 +1,6 @@
 # ASTRON
 
-> *The Clockwork of the Heavens, Charted.*
+> _The Clockwork of the Heavens, Charted._
 
 ASTRON is an astrology chart engine and app suite (CLI, web, desktop) built on the
 [Swiss Ephemeris](https://www.astro.com/swisseph/). Western tropical and Vedic
@@ -163,4 +163,4 @@ AGPL-3.0 — required by the Swiss Ephemeris, which is dual-licensed AGPL/commer
 
 Astrology is a rich symbolic tradition, not a predictive science. ASTRON computes
 real astronomical positions and applies the tradition's rules faithfully — what the
-placements *mean* is a question for the tradition, and for you.
+placements _mean_ is a question for the tradition, and for you.

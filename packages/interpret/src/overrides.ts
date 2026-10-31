@@ -56,7 +56,10 @@ export function mergeContent(overrides?: ContentOverrides): ContentSet {
   }
   const aspectLenses = { ...SHIPPED_CONTENT.aspectLenses };
   for (const [aspect, patch] of Object.entries(overrides.aspectLenses ?? {})) {
-    aspectLenses[aspect as AspectName] = { ...aspectLenses[aspect as AspectName], ...patch };
+    aspectLenses[aspect as AspectName] = {
+      ...aspectLenses[aspect as AspectName],
+      ...patch,
+    };
   }
   const houseDomains = [...SHIPPED_CONTENT.houseDomains];
   for (const [k, v] of Object.entries(overrides.houseDomains ?? {})) {
@@ -64,15 +67,26 @@ export function mergeContent(overrides?: ContentOverrides): ContentSet {
     if (i >= 0 && i < 12) houseDomains[i] = v;
   }
   const fluentPlacements = { ...SHIPPED_CONTENT.fluentPlacements };
-  for (const [body, patch] of Object.entries(overrides.fluentPlacements ?? {})) {
-    fluentPlacements[body as Body] = { ...fluentPlacements[body as Body], ...patch } as Record<Sign, string>;
+  for (const [body, patch] of Object.entries(
+    overrides.fluentPlacements ?? {},
+  )) {
+    fluentPlacements[body as Body] = {
+      ...fluentPlacements[body as Body],
+      ...patch,
+    } as Record<Sign, string>;
   }
   return {
-    planetArchetypes: { ...SHIPPED_CONTENT.planetArchetypes, ...overrides.planetArchetypes },
+    planetArchetypes: {
+      ...SHIPPED_CONTENT.planetArchetypes,
+      ...overrides.planetArchetypes,
+    },
     signLenses,
     houseDomains,
     aspectLenses,
-    dignityNotes: { ...SHIPPED_CONTENT.dignityNotes, ...overrides.dignityNotes },
+    dignityNotes: {
+      ...SHIPPED_CONTENT.dignityNotes,
+      ...overrides.dignityNotes,
+    },
     fluentPlacements,
   };
 }
@@ -84,14 +98,19 @@ export function countOverrides(overrides?: ContentOverrides): number {
   n += Object.keys(overrides.planetArchetypes ?? {}).length;
   n += Object.keys(overrides.dignityNotes ?? {}).length;
   n += Object.keys(overrides.houseDomains ?? {}).length;
-  for (const patch of Object.values(overrides.signLenses ?? {})) n += Object.keys(patch).length;
-  for (const patch of Object.values(overrides.aspectLenses ?? {})) n += Object.keys(patch).length;
-  for (const patch of Object.values(overrides.fluentPlacements ?? {})) n += Object.keys(patch).length;
+  for (const patch of Object.values(overrides.signLenses ?? {}))
+    n += Object.keys(patch).length;
+  for (const patch of Object.values(overrides.aspectLenses ?? {}))
+    n += Object.keys(patch).length;
+  for (const patch of Object.values(overrides.fluentPlacements ?? {}))
+    n += Object.keys(patch).length;
   return n;
 }
 
 /** The note that must accompany readings rendered with personalised text. */
-export function overridesNote(overrides?: ContentOverrides): string | undefined {
+export function overridesNote(
+  overrides?: ContentOverrides,
+): string | undefined {
   const n = countOverrides(overrides);
   if (!n) return undefined;
   return `${n} passage${n === 1 ? "" : "s"} of this text ${n === 1 ? "has" : "have"} been personalised by the chart's owner — this is their voice as much as the tradition's.`;
@@ -106,29 +125,70 @@ const SECTIONS = [
   "fluentPlacements",
 ] as const;
 
+const MAX_PASSAGE_CHARS = 5000;
+const LENS_KEYS = ["light", "truth", "shadow"];
+const HOUSE_KEYS = Array.from({ length: 12 }, (_, i) => String(i + 1));
+
+/** Allowed outer/inner keys per section, from the shipped content itself. */
+function allowedKeys(section: (typeof SECTIONS)[number]): {
+  outer: string[];
+  inner?: string[];
+} {
+  switch (section) {
+    case "planetArchetypes":
+      return { outer: Object.keys(SHIPPED_CONTENT.planetArchetypes) };
+    case "dignityNotes":
+      return { outer: Object.keys(SHIPPED_CONTENT.dignityNotes) };
+    case "houseDomains":
+      return { outer: HOUSE_KEYS };
+    case "signLenses":
+      return {
+        outer: Object.keys(SHIPPED_CONTENT.signLenses),
+        inner: LENS_KEYS,
+      };
+    case "aspectLenses":
+      return {
+        outer: Object.keys(SHIPPED_CONTENT.aspectLenses),
+        inner: LENS_KEYS,
+      };
+    case "fluentPlacements":
+      return {
+        outer: Object.keys(SHIPPED_CONTENT.fluentPlacements),
+        inner: Object.keys(SHIPPED_CONTENT.signLenses),
+      };
+  }
+}
+
 /**
- * Parse an exported overrides file, keeping only recognised sections and
- * string leaves — a hand-edited file can't smuggle in surprises.
+ * Parse an exported overrides file, keeping only recognised sections, keys
+ * and string leaves — a hand-edited file can't smuggle in surprises
+ * (unknown bodies, `__proto__`, unbounded blobs).
  */
 export function parseOverrides(json: string): ContentOverrides {
   const raw = JSON.parse(json) as Record<string, unknown>;
-  if (raw["version"] !== 1) throw new Error("unsupported overrides version (expected 1)");
+  if (raw["version"] !== 1)
+    throw new Error("unsupported overrides version (expected 1)");
   const out: ContentOverrides = { version: 1 };
   for (const section of SECTIONS) {
     const value = raw[section];
     if (!value || typeof value !== "object") continue;
+    const { outer, inner: innerAllowed } = allowedKeys(section);
     const clean: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(value)) {
-      if (typeof v === "string") clean[k] = v;
-      else if (v && typeof v === "object") {
+      if (!outer.includes(k)) continue;
+      if (typeof v === "string") clean[k] = v.slice(0, MAX_PASSAGE_CHARS);
+      else if (v && typeof v === "object" && innerAllowed) {
         const inner: Record<string, string> = {};
         for (const [ik, iv] of Object.entries(v)) {
-          if (typeof iv === "string") inner[ik] = iv;
+          if (innerAllowed.includes(ik) && typeof iv === "string") {
+            inner[ik] = iv.slice(0, MAX_PASSAGE_CHARS);
+          }
         }
         if (Object.keys(inner).length) clean[k] = inner;
       }
     }
-    if (Object.keys(clean).length) (out as unknown as Record<string, unknown>)[section] = clean;
+    if (Object.keys(clean).length)
+      (out as unknown as Record<string, unknown>)[section] = clean;
   }
   return out;
 }

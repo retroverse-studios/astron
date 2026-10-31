@@ -45,9 +45,13 @@ export function AspectTable({
               <td className="py-1 pr-4">
                 {pairLabels?.[1]} {GLYPHS[a.b]} {BODY_NAMES[a.b]}
               </td>
-              <td className="py-1 pr-4 text-crt-dim">orb {a.orb.toFixed(1)}°</td>
+              <td className="py-1 pr-4 text-crt-dim">
+                orb {a.orb.toFixed(1)}°
+              </td>
               {showApplying && (
-                <td className="py-1 text-crt-dim">{a.applying ? "applying" : "separating"}</td>
+                <td className="py-1 text-crt-dim">
+                  {a.applying ? "applying" : "separating"}
+                </td>
               )}
             </tr>
           ))}
@@ -75,10 +79,18 @@ export function PlanetTable({
             <tr key={p.body} className="border-t border-crt-line/40">
               <td className="py-1 pr-2 text-crt-bright">{GLYPHS[p.body]}</td>
               <td className="py-1 pr-4">{BODY_NAMES[p.body]}</td>
-              <td className="py-1 pr-4 text-crt-bright">{formatLongitude(p.longitude)}</td>
-              <td className="py-1 pr-4 text-crt-dim">{p.house ? `house ${p.house}` : ""}</td>
-              <td className="py-1 pr-4 text-crt-amber">{p.retrograde ? "℞" : ""}</td>
-              <td className="py-1 text-crt-dim">{dignities(p.body, p.sign, scheme).join(", ")}</td>
+              <td className="py-1 pr-4 text-crt-bright">
+                {formatLongitude(p.longitude)}
+              </td>
+              <td className="py-1 pr-4 text-crt-dim">
+                {p.house ? `house ${p.house}` : ""}
+              </td>
+              <td className="py-1 pr-4 text-crt-amber">
+                {p.retrograde ? "℞" : ""}
+              </td>
+              <td className="py-1 text-crt-dim">
+                {dignities(p.body, p.sign, scheme).join(", ")}
+              </td>
             </tr>
           ))}
           {chart.houses && (
@@ -98,7 +110,9 @@ export function PlanetTable({
                 {formatLongitude(pof)}
               </td>
               <td className="py-1 text-crt-dim">
-                {isDayChart(sun.longitude, chart.houses.ascendant) ? "day chart" : "night chart"}
+                {isDayChart(sun.longitude, chart.houses.ascendant)
+                  ? "day chart"
+                  : "night chart"}
               </td>
             </tr>
           )}

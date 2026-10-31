@@ -30,14 +30,23 @@ export function useContentOverrides() {
    * Set one passage. `subKey` addresses a lens inside signs/aspects (or a
    * sign inside the fluent set); value null restores the shipped text.
    */
-  function setEntry(section: Section, key: string, subKey: string | null, value: string | null) {
+  function setEntry(
+    section: Section,
+    key: string,
+    subKey: string | null,
+    value: string | null,
+  ) {
     setOverrides((prev) => {
-      const sectionObj: Record<string, unknown> = { ...(prev[section] as object | undefined) };
+      const sectionObj: Record<string, unknown> = {
+        ...(prev[section] as object | undefined),
+      };
       if (subKey === null) {
         if (value === null) delete sectionObj[key];
         else sectionObj[key] = value;
       } else {
-        const inner: Record<string, string> = { ...(sectionObj[key] as object | undefined) };
+        const inner: Record<string, string> = {
+          ...(sectionObj[key] as object | undefined),
+        };
         if (value === null) delete inner[subKey];
         else inner[subKey] = value;
         if (Object.keys(inner).length) sectionObj[key] = inner;

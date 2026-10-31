@@ -49,7 +49,14 @@ function bestAspectBetween(
     const dDistance = Math.sign(signedSep || 1) * relativeSpeed;
     const applying = distance > def.angle ? dDistance < 0 : dDistance > 0;
 
-    best = { a: a.body, b: b.body, name: def.name, angle: def.angle, orb, applying };
+    best = {
+      a: a.body,
+      b: b.body,
+      name: def.name,
+      angle: def.angle,
+      orb,
+      applying,
+    };
   }
   return best;
 }

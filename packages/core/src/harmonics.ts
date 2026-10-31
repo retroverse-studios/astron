@@ -7,8 +7,12 @@ import { degreeInSign, norm360, signOf } from "./zodiac.js";
  * harmonic highlights quintile structures, the 7th septiles, the 9th is the
  * Western cousin of the navamsa. Houses don't survive the transform.
  */
-export function harmonicPositions(positions: BodyPosition[], n: number): BodyPosition[] {
-  if (!Number.isInteger(n) || n < 1) throw new Error("harmonic must be a positive integer");
+export function harmonicPositions(
+  positions: BodyPosition[],
+  n: number,
+): BodyPosition[] {
+  if (!Number.isInteger(n) || n < 1)
+    throw new Error("harmonic must be a positive integer");
   return positions.map((p) => {
     const longitude = norm360(p.longitude * n);
     return {

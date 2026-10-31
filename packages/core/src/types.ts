@@ -28,13 +28,13 @@ export const DEFAULT_BODIES: Body[] = [
   "pluto",
   "trueNode",
   "chiron",
+  "meanLilith",
 ];
 
 export type Ayanamsa = "lahiri" | "raman" | "krishnamurti" | "faganBradley";
 
 export type ZodiacMode =
-  | { type: "tropical" }
-  | { type: "sidereal"; ayanamsa: Ayanamsa };
+  { type: "tropical" } | { type: "sidereal"; ayanamsa: Ayanamsa };
 
 export type HouseSystem =
   | "placidus"
@@ -160,7 +160,8 @@ export interface Chart {
 }
 
 /** Divisional (varga) charts supported. D1 is the rasi chart itself. */
-export type Varga = "d1" | "d2" | "d3" | "d7" | "d9" | "d10" | "d12" | "d30" | "d60";
+export type Varga =
+  "d1" | "d2" | "d3" | "d7" | "d9" | "d10" | "d12" | "d30" | "d60";
 
 export interface EphemerisProvider {
   julianDayUt(utc: Date, calendar?: CalendarSystem): number;

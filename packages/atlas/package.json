@@ -1,9 +1,10 @@
 {
   "name": "@astron/atlas",
   "version": "0.1.0",
-  "description": "ASTRON atlas — offline city geocoding (GeoNames), historical timezone resolution, and Local Mean Time for pre-standard-time births.",
+  "description": "ASTRON atlas \u2014 offline city geocoding (GeoNames), historical timezone resolution, and Local Mean Time for pre-standard-time births.",
   "license": "AGPL-3.0-only",
   "type": "module",
+  "sideEffects": false,
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -17,7 +18,10 @@
     },
     "./data/cities.tsv.gz": "./data/cities.tsv.gz"
   },
-  "files": ["dist", "data"],
+  "files": [
+    "dist",
+    "data"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "build:data": "tsx scripts/build-data.ts",
@@ -32,6 +36,6 @@
     "@types/node": "^22",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0",
-    "vitest": "^2.1.9"
+    "vitest": "^5.0.5"
   }
 }
