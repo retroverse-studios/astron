@@ -23,7 +23,7 @@
   },
   "dependencies": {
     "@astron/core": "workspace:*",
-    "swisseph-wasm": "^0.0.5"
+    "swisseph-wasm": "^0.1.0"
   },
   "devDependencies": {
     "typescript": "^5.7.0",
