@@ -49,8 +49,8 @@ importers:
         version: 3.7.2
     devDependencies:
       '@types/luxon':
-        specifier: ^3.4.2
-        version: 3.7.2
+        specifier: ^3.7.6
+        version: 3.7.6
       '@types/node':
         specifier: ^22
         version: 22.20.1
@@ -104,8 +104,8 @@ importers:
         specifier: ^4.3.3
         version: 4.3.3(vite@8.3.5(@types/node@22.20.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.0))
       '@types/luxon':
-        specifier: ^3.4.2
-        version: 3.7.2
+        specifier: ^3.7.6
+        version: 3.7.6
       '@types/react':
         specifier: ^18.3.12
         version: 18.3.31
@@ -138,8 +138,8 @@ importers:
         version: 3.7.2
     devDependencies:
       '@types/luxon':
-        specifier: ^3.4.2
-        version: 3.7.2
+        specifier: ^3.7.6
+        version: 3.7.6
       '@types/node':
         specifier: ^22
         version: 22.20.1
@@ -737,8 +737,8 @@ packages:
   '@types/json-schema@7.0.15':
     resolution: {integrity: sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA==}
 
-  '@types/luxon@3.7.2':
-    resolution: {integrity: sha512-gW+Oib+vUtGJBtNC8V9Reww0oIpusw+4m81uncg9REGZAJfqOQHfo/nkabnc7w0QReXyPqjrbWMJk6NuAkiX3Q==}
+  '@types/luxon@3.7.6':
+    resolution: {integrity: sha512-6KSjliQAXK8ZLgFQO4B7iE4Rpf/B3rItzCFuXezBY/XIAGxOdLd7vRNK9/StRPwiS/yJsVbB7HKpW46B8tcEuQ==}
 
   '@types/node@22.20.1':
     resolution: {integrity: sha512-EANqOCF9QFyra+4pfxUcX9STKJpCLjMbObVzljIJomAWSnuSIEAvyzEU53GaajbXJEgdh0iEcPL+DGvpUd4k1Q==}
@@ -1846,7 +1846,7 @@ snapshots:
 
   '@types/json-schema@7.0.15': {}
 
-  '@types/luxon@3.7.2': {}
+  '@types/luxon@3.7.6': {}
 
   '@types/node@22.20.1':
     dependencies:
