@@ -1,117 +1,32 @@
-name: Release
+# Shared release pipeline: michael-borck/app-hq/.github/workflows/tauri-release.yml
+name: Release desktop
 
-# Builds desktop installers when a v* tag is pushed and attaches them to a
-# draft GitHub release, which the final job publishes once every platform's
-# assets are attached (so releases/latest never serves a half-built release —
-# the landing page's download buttons read it). macOS bundles are code-signed
-# with a Developer ID certificate and notarized by Apple during bundling
-# (Windows/Linux unsigned).
 on:
   push:
-    tags: ["v*"]
+    tags: ['v*']
   workflow_dispatch:
 
-# the default GITHUB_TOKEN is read-only; creating the draft release needs write
 permissions:
   contents: write
 
 jobs:
-  build:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - platform: macos-latest
-            args: --target aarch64-apple-darwin
-          - platform: macos-latest
-            args: --target x86_64-apple-darwin
-          - platform: ubuntu-22.04
-            args: ""
-          - platform: windows-latest
-            args: ""
-    runs-on: ${{ matrix.platform }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Linux webview dependencies
-        if: matrix.platform == 'ubuntu-22.04'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev \
-            librsvg2-dev patchelf
-
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: aarch64-apple-darwin,x86_64-apple-darwin
-
-      - run: pnpm install --frozen-lockfile
-      # Build all workspace packages (topological order) exactly like CI does,
-      # so newly added packages (e.g. @astron/interpret) are never missed.
-      - run: pnpm -r --filter '!astron-desktop' build
-
-      - name: Prepare App Store Connect API key
-        if: startsWith(matrix.platform, 'macos')
-        env:
-          APPLE_API_KEY_CONTENT: ${{ secrets.APPLE_API_KEY_CONTENT }}
-          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
-        run: |
-          if [ -n "$APPLE_API_KEY_CONTENT" ] && [ -n "$APPLE_API_KEY" ]; then
-            mkdir -p ~/.appstoreconnect/private_keys
-            printf '%s' "$APPLE_API_KEY_CONTENT" | openssl base64 -d -A > ~/.appstoreconnect/private_keys/AuthKey_${APPLE_API_KEY}.p8
-            chmod 600 ~/.appstoreconnect/private_keys/AuthKey_${APPLE_API_KEY}.p8
-          else
-            echo "No API key secrets; notarization will fall back to Apple ID"
-          fi
-
-      - uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # macOS code signing (presence of these triggers signing in the
-          # Tauri bundler) and notarization (Apple ID + app-specific password).
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
-          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          # Updater artifact signing (tauri signer generate); latest.json on the
-          # release points the in-app updater at these signed artifacts.
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        with:
-          projectPath: apps/desktop
-          tagName: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
-          releaseName: ${{ startsWith(github.ref, 'refs/tags/') && format('ASTRON {0}', github.ref_name) || '' }}
-          releaseDraft: true
-          includeUpdaterJson: true
-          args: ${{ matrix.args }}
-
-      - name: Upload artifacts (manual runs)
-        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: astron-${{ matrix.platform }}-${{ strategy.job-index }}
-          path: |
-            apps/desktop/src-tauri/target/**/release/bundle/**/*.dmg
-            apps/desktop/src-tauri/target/**/release/bundle/**/*.app.tar.gz
-            apps/desktop/src-tauri/target/**/release/bundle/**/*.AppImage
-            apps/desktop/src-tauri/target/**/release/bundle/**/*.deb
-            apps/desktop/src-tauri/target/**/release/bundle/**/*.msi
-            apps/desktop/src-tauri/target/**/release/bundle/**/*.exe
-          if-no-files-found: warn
-          retention-days: 5
-
-  publish:
-    needs: build
-    if: startsWith(github.ref, 'refs/tags/')
-    runs-on: ubuntu-latest
-    steps:
-      - name: Publish the release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft=false
+  release:
+    uses: michael-borck/app-hq/.github/workflows/tauri-release.yml@main
+    with:
+      product-name: ASTRON
+      project-path: apps/desktop
+      install-command: corepack enable && pnpm install --frozen-lockfile
+      cache: ''
+      build-command: pnpm -r --filter '!astron-desktop' build
+      preflight-command: pnpm -r --filter '!astron-desktop' build
+      updater: true
+    secrets:
+      APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+      APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+      APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+      APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+      APPLE_API_KEY_CONTENT: ${{ secrets.APPLE_API_KEY_CONTENT }}
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
